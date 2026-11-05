@@ -1,6 +1,7 @@
 import astropy as ap
 from astropy.io import fits
 from matplotlib import image
+from pathlib import Path
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy import ndimage as ndi
@@ -14,6 +15,7 @@ from astropy.visualization import (AsinhStretch,
                                    ZScaleInterval,)
 from photutils.segmentation import deblend_sources, SegmentationImage
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
+
 
 def detect_sources(
     data, bins=50, hist_range=(3300, 3600),
@@ -247,8 +249,9 @@ def mask_whole_bleeding_region(data, labels, mean, stddev, threshold=3):
     
 
 
-
-header, data = get_fits_data('../Fits_Data/mosaic.fits')
+project_dir = Path(__file__).resolve().parent.parent.parent
+fits_path = project_dir / "Astro" / "Fits_Data" / "mosaic.fits"
+header, data = get_fits_data(fits_path)
 
 # Crop once before background fitting, detection, deblending, and plotting.
 crop_x_range = (70, 2450)

@@ -3,8 +3,8 @@ from astropy.io import fits
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from get import get_fits_data
-from background import plot_histogram, fit_gaussian
+from codes2.codes_1105.get import get_fits_data
+from codes2.codes_1105.background import plot_histogram, fit_gaussian
 
 def gaussian_background(file_path):
     """
@@ -16,7 +16,9 @@ def gaussian_background(file_path):
 
     Terminal:
     from main import gaussian_background
-    gaussian_background('../Fits_Data/mosaic.fits')
+    project_dir = Path(__file__).resolve().parent.parent
+    fits_path = project_dir / "Astro" / "Fits_Data" / "mosaic.fits"
+    gaussian_background(str(fits_path))
     """
 
     # Get data from FITS file
