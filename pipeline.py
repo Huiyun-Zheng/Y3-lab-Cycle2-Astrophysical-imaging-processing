@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from astropy.stats import sigma_clipped_stats
 from scipy import ndimage
+from matplotlib.patches import Circle
 
 
 # %%
@@ -18,7 +19,7 @@ with fits.open(data_dir) as hdul:
     header = hdul[0].header.copy()
 
 print(data)
-print(data.shape)
+print(data.shape)  # 4611 rows, 2570 columns
 print(header)
 # %%
 plt.imshow(data, cmap='gray')
@@ -72,4 +73,11 @@ plt.contour(source_mask, levels=[0.5], colors="red", linewidths=0.5)
 plt.title("Candidate source regions")
 plt.savefig(base_dir / "candidate_sources.png", dpi=300)
 plt.show()
+# %%
+image = np.asarray(data, dtype=float)
+ny, nx = image.shape
+
+invalid_mask = ~np.isfinite(image)
+artifact_mask = np.zeros(image.shape, dtype=bool)
+done_mask = np.zeros(image.shape, dtype=bool)
 # %%
