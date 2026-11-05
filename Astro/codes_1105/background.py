@@ -40,11 +40,27 @@ def fit_gaussian(data, bins=50, range=(3300, 3600)):
     hist, bin_edges = np.histogram(data.ravel(), bins=bins, range=range)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
+    if np.count_nonzero(hist) < 3:
+        raise ValueError("Need at least three populated bins to fit the background")
+
     # Fit a Gaussian
     def gaussian(x, amp, mean, std):
         return amp * np.exp(-((x - mean) ** 2) / (2 * std ** 2))
 
-    popt, _ = curve_fit(gaussian, bin_centers, hist, p0=[max(hist), np.mean(data), np.std(data)])
+    # Initialize from the histogram being fitted, excluding bright-source tails.
+    mean_initial = bin_centers[np.argmax(hist)]
+    histogram_mean = np.average(bin_centers, weights=hist)
+    std_initial = np.sqrt(
+        np.average((bin_centers - histogram_mean) ** 2, weights=hist)
+    )
+    popt, _ = curve_fit(
+        gaussian, bin_centers, hist,
+        p0=[hist.max(), mean_initial, std_initial],
+        bounds=(
+            [0, bin_edges[0], np.finfo(float).eps],
+            [np.inf, bin_edges[-1], np.inf]
+        )
+    )
     
     mean = popt[1]
     stddev = popt[2]
