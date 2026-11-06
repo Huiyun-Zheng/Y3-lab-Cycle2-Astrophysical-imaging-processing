@@ -4,7 +4,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-def plot_histogram(data, bins=50, range=(3300, 3600)):
+def plot_histogram(data, bins=300, range=(3300, 3600)):
     """
     Plots a histogram of the data.
 

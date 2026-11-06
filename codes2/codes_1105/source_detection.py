@@ -1,5 +1,6 @@
 import astropy as ap
 from astropy.io import fits
+from astropy.stats import sigma_clipped_stats
 from matplotlib import image
 from pathlib import Path
 import numpy as np
@@ -16,11 +17,17 @@ from astropy.visualization import (AsinhStretch,
 from photutils.segmentation import deblend_sources, SegmentationImage
 from photutils.aperture import CircularAperture
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
-from bleeding import spot_linear_sources, bleeding_band_mask
+from bleeding import (spot_linear_sources,
+                    bleeding_band_mask, 
+                    mask_whole_bleeding_region,
+                    find_halo_radius,
+                    mask_saturated)
+from stars import find_stars
 
+saturation = 36000
 
 def detect_sources(
-    data, bins=50, hist_range=(3300, 3600),
+    data, bins=300, hist_range=(3300, 3600),
     threshold=3, min_area=5
 ):
     """
@@ -79,7 +86,7 @@ def crop_array(array, x_range, y_range):
 
     return array[y_min:y_max, x_min:x_max]
 
-def plot_detected_sources(data, labels, contour='no_deblending'):
+def plot_detected_sources(data, labels, contour='no_deblending', filename=None):
     """
     Plots the original data with detected sources overlaid.
 
@@ -135,6 +142,8 @@ def plot_detected_sources(data, labels, contour='no_deblending'):
 
     plt.xlabel('X Pixel')
     plt.ylabel('Y Pixel')
+    if filename:
+        plt.savefig(filename, dpi=300)
     plt.show()
 
 def plot_single_source(labels, label_center):
@@ -187,9 +196,52 @@ bleed_mask = bleeding_band_mask(
     lower_bound=lower_original - y_offset
 )
 
+mask_radius = find_halo_radius(
+    data, center, 40,
+    mean, stddev,
+    bleed_mask=bleed_mask,
+    max_radius=150
+)
+
+print("Halo radius:", mask_radius)
+
 plot_detected_sources(data, bleed_mask)
+
+# Mask stars
+star_centers = [
+    (775, 3320),
+    (973, 2773),
+    (907, 2280),
+    (2137, 3755),
+    (2090, 1423),
+    # (2467, 3415),  # Outside the current crop
+    (2132, 2306),
+    (1425, 3208)
+]
+
+star_centers_cropped = [
+    (x - x_offset, y - y_offset) for x, y in star_centers
+]
+
+star_centers_cropped = [
+    (x - x_offset, y - y_offset) for x, y in star_centers
+]
+
+star_masks = np.zeros(data.shape, dtype=bool)
+
+for center in star_centers_cropped:
+    mask = find_stars(data, labels, center)
+    star_masks |= mask > 0
+
+plot_detected_sources(data, star_masks, filename='outputs/detected_stars_overlay.svg')
+
+# deblend the sources
 deblended_labels = deblend(data, labels)
 #plot_detected_sources(data, deblended_labels, contour='scatter')
+
+# Mask saturated regions
+saturated_mask = mask_saturated(data, labels, saturation=saturation)
+plot_detected_sources(data, saturated_mask, filename='outputs/saturated_regions_overlay.svg')
 
 angles, rhos = spot_linear_sources(
     data, deblended_labels,
@@ -213,3 +265,47 @@ small_y_range = (1000 - y_offset, 1500 - y_offset)
 small_data = crop_array(data, small_x_range, small_y_range)
 small_labels = crop_array(deblended_labels, small_x_range, small_y_range)
 plot_detected_sources(small_data, small_labels)
+
+# Local background section
+x0, y0 = map(int, center)
+outer_radius = 300
+
+section = data[
+    y0 - outer_radius:y0 + outer_radius + 1,
+    x0 - outer_radius:x0 + outer_radius + 1
+]
+
+yy, xx = np.ogrid[
+    -outer_radius:outer_radius + 1,
+    -outer_radius:outer_radius + 1
+]
+distance = np.hypot(xx, yy)
+
+# Background annulus
+sky_ring = (distance >= 200) & (distance < outer_radius)
+
+sky_ring &= ~bleed_mask[
+    y0 - outer_radius:y0 + outer_radius + 1,
+    x0 - outer_radius:x0 + outer_radius + 1
+]
+
+_, local_bg, local_std = sigma_clipped_stats(
+    section[sky_ring], sigma=3, maxiters=5
+)
+
+mask_radius = find_halo_radius(
+    data, center, 40,
+    local_bg, local_std,
+    bleed_mask=bleed_mask,
+    max_radius=150
+)
+
+print("Halo radius:", mask_radius)
+
+whole_mask = mask_whole_bleeding_region(
+    data, center, 40, 70, mean, stddev,
+    half_width=15,
+    upper_bound=upper_original - y_offset,
+    lower_bound=lower_original - y_offset)
+
+plot_detected_sources(data, whole_mask)
