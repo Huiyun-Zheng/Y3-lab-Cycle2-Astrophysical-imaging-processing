@@ -1,0 +1,37 @@
+{
+  "before": {
+    "candidates": 7017,
+    "usable_candidates": 4641,
+    "negative_image_candidates": 170
+  },
+  "after": {
+    "candidates": 7437,
+    "usable_candidates": 4692,
+    "negative_image_candidates": 201
+  },
+  "crop_bounds_xy": [
+    260,
+    570,
+    2350,
+    2570
+  ],
+  "crop_counts_before_after": [
+    41,
+    44
+  ],
+  "recovered_peak_examples_xy": {
+    "A": [
+      442,
+      2519
+    ],
+    "B": [
+      332,
+      2435
+    ],
+    "C": [
+      374,
+      2383
+    ]
+  },
+  "note": "Net count change is not a validated count of additional real galaxies. A/B/C coordinates are for validation only; detection uses no manual coordinates."
+}

@@ -20,9 +20,9 @@ image = np.asarray(data, dtype=float)
 ny, nx = image.shape
 # %%
 # Detection parameters
-detec_sigma = 4  # Require the candidate peak to exceed the background by five standard deviations
+detec_sigma = 5  # Require the candidate peak to exceed the background by five standard deviations
 aperture_radius = 8  # Radius in pixels, used for preliminary aperture photometry
-mask_radius = 20  # In pixels, set the exclusion radius used to avoid detecting the same source multiple times
+mask_radius = 12  # In pixels, set the exclusion radius used to avoid detecting the same source multiple times
 min_pixels = 5  # Require at least five bright pixels in the local 5 * 5 neighbourhood to consider a candidate peak as a source
 
 # Unusable regions
@@ -147,7 +147,7 @@ for index in candidate_indices:
 print(f"Detected {len(sources)} sources.")
 # %%
 # Visualisation of the detected sources
-fig, ax = plt.subplots(figsize=(8, 11))
+fig, ax = plt.subplots(figsize=(6, 8))
 
 ax.imshow(
     image,
@@ -184,6 +184,8 @@ for source in sources:
 ax.set_xlabel("x / pixel")
 ax.set_ylabel("y / pixel")
 ax.set_title(f"{len(sources)} candidate sources")
+plt.tight_layout()
+plt.savefig("output/preliminary_sources.png", dpi=300)
 plt.show()
 # %%
 print(noise)

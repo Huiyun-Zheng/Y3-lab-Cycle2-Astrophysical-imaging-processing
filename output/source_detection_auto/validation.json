@@ -1,0 +1,22 @@
+{
+  "real_image_checks": {
+    "all_saturated_pixels_masked": true,
+    "sources_outside_detection_mask": true,
+    "detection_mask_unchanged": true,
+    "processed_equals_source_pixels": true,
+    "unique_catalogue_segments": true,
+    "brightness_descending": true,
+    "usable_apertures_finite": true,
+    "contaminated_flux_is_nan": true,
+    "source_A_recovered": true,
+    "source_B_separated": true,
+    "source_C_separated": true,
+    "original_script_unchanged": true,
+    "source_B_was_merged_before": true
+  },
+  "synthetic_regression_tests": {
+    "command": "python -m unittest -v test_source_detection_auto",
+    "passed": 7,
+    "failed": 0
+  }
+}

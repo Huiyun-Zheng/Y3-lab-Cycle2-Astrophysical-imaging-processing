@@ -13,7 +13,7 @@ base_dir = Path(__file__).resolve().parent
 data_dir = base_dir / "Astro" / "Fits_Data" / "mosaic.fits"
 
 with fits.open(data_dir) as hdul:
-    #hdul.info()
+    hdul.info()
 
     data = hdul[0].data.copy()
     header = hdul[0].header.copy()
