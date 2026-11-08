@@ -23,6 +23,7 @@ from bleeding import (spot_linear_sources,
                     find_halo_radius,
                     mask_saturated)
 from stars import find_stars
+from aperture_conversion import aperture_center_shape, plot_source_aperture, plot_aperture_scales, optimize_scale
 
 saturation = 36000
 
@@ -309,3 +310,11 @@ whole_mask = mask_whole_bleeding_region(
     lower_bound=lower_original - y_offset)
 
 plot_detected_sources(data, whole_mask)
+
+centers, ellipse = aperture_center_shape(data, labels, mean, stddev)
+
+plot_source_aperture(data, labels, mean, stddev, target_label=89, scale=2.5)
+
+scales, fluxes = optimize_scale(
+    data, labels, mean, stddev, target_label=89
+)
