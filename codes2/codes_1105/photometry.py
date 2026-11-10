@@ -76,7 +76,7 @@ def fixed_aperture_photometry(data, labels, mean, stddev, scale=3.0, mask=None):
     results["flux"].description = "Background-subtracted sum in input image units"
     return results
 
-def AB_calibration(result, header):
+def AB_calibration(result, header, bins=100):
 
     valid = (
         (result['flag'] == 0)
@@ -98,7 +98,7 @@ def AB_calibration(result, header):
     magnitudes_zp_error = np.full(magnitudes.shape, ZP_error)
 
     # plot the result
-    plt.hist(magnitudes, bins=50)
+    plt.hist(magnitudes, bins=bins)
     plt.title(f'Magnitude distribution of {magnitudes.shape} valid sources')
     plt.ylabel('Number of sources')
     plt.xlabel('Magnitude')
@@ -106,3 +106,21 @@ def AB_calibration(result, header):
     plt.show()
 
     return magnitudes, magnitudes_zp_error
+
+def population_above_magnitude(magnitudes):
+    mag_thresholds = np.linspace(0, max(magnitudes), 20)
+    populations = []
+    for m in mag_thresholds:
+        pop = len(magnitudes[magnitudes < m])
+        populations.append(pop)
+
+    populations = np.asarray(populations)
+    positive = populations > 0
+    plt.plot(mag_thresholds[positive], np.log10(populations[positive]))
+    plt.title('N - m relationship')
+    plt.xlabel('Magnitude Thresholds')
+    #plt.xlim((0, 20))
+    plt.ylabel('log10 N(m < threshold)')
+    plt.show()
+
+    return mag_thresholds, populations

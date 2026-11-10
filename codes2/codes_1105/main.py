@@ -1,11 +1,12 @@
 from pathlib import Path
 import numpy as np
+import matplotlib.pyplot as plt
 from get import get_fits_data
 from bleeding import (mask_whole_bleeding_region, mask_saturated)
 from stars import find_stars
 from aperture_conversion import aperture_center_shape, plot_source_aperture, plot_aperture_scales, optimize_scale
 from source_detection import detect_sources, deblend, crop_array, plot_detected_sources
-from photometry import fixed_aperture_photometry, AB_calibration
+from photometry import fixed_aperture_photometry, AB_calibration, population_above_magnitude
 
 saturation = 36000
 
@@ -74,8 +75,12 @@ small_labels = crop_array(deblended_labels, small_x_range, small_y_range)
 plot_detected_sources(small_data, small_labels)
 
 # Mask all the bleeding sources
+bleeding_center = (
+    center_original[0] - x_offset,
+    center_original[1] - y_offset
+)
 whole_mask = mask_whole_bleeding_region(
-    data, center, 40, 70, mean, stddev,
+    data, bleeding_center, 40, 70, mean, stddev,
     half_width=15,
     upper_bound=upper_original - y_offset,
     lower_bound=lower_original - y_offset)
@@ -106,3 +111,25 @@ good_results = results[results["flag"] == 0]
 #print(good_results)
 
 mags, mag_errs = AB_calibration(results, header)
+
+mag_thre, populations = population_above_magnitude(mags)
+populations = np.array(populations)
+positive = populations > 0
+fitting_mask = (mag_thre <= 25) & (populations > 0)
+
+coeffs, cov = np.polyfit(
+    mag_thre[fitting_mask],
+    np.log10(populations[fitting_mask]),
+    deg=1, cov=True
+)
+
+fit = np.poly1d(coeffs)
+plt.plot(mag_thre[fitting_mask], fit(mag_thre[fitting_mask]), c='red')
+plt.scatter(mag_thre, np.log10(populations), c='blue')
+plt.title('N - m relationship')
+plt.xlabel('Magnitude Thresholds')
+#plt.xlim((0, 20))
+plt.ylabel('log10 N(m < threshold)')
+plt.show()
+
+print(coeffs, cov)
