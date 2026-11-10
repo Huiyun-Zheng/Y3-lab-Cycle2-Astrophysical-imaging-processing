@@ -3,6 +3,9 @@ from astropy.table import Table
 import matplotlib.pyplot as plt
 from photutils.aperture import EllipticalAperture
 from aperture_conversion import aperture_center_shape
+from astropy.visualization import ZScaleInterval
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Ellipse, Patch
 
 def fixed_aperture_photometry(data, labels, mean, stddev, scale=3.0, mask=None):
     """Measure fixed-scale ellipses; flagged fluxes are NaN."""
@@ -75,6 +78,81 @@ def fixed_aperture_photometry(data, labels, mean, stddev, scale=3.0, mask=None):
     results["theta"].unit = "rad"
     results["flux"].description = "Background-subtracted sum in input image units"
     return results
+
+
+def plot_aperture_catalogue(
+        data, results, x_range=None, y_range=None,
+        figsize=(10, 16), filename=None, show=True
+        ):
+    """Plot measured ellipses on the image, coloured by catalogue selection."""
+
+    height, width = data.shape
+    x_min, x_max = (0, width) if x_range is None else x_range
+    y_min, y_max = (0, height) if y_range is None else y_range
+    x_min, x_max = max(0, int(x_min)), min(width, int(x_max))
+    y_min, y_max = max(0, int(y_min)), min(height, int(y_max))
+    if x_min >= x_max or y_min >= y_max:
+        raise ValueError("Plot ranges must overlap the image")
+
+    x = np.asarray(results['x_center'])
+    y = np.asarray(results['y_center'])
+    a = np.asarray(results['a'])
+    b = np.asarray(results['b'])
+    theta = np.asarray(results['theta'])
+    flux = np.asarray(results['flux'])
+    usable = (results['flag'] == 0) & np.isfinite(flux) & (flux > 0)
+
+    # Keep ellipses intersecting this section
+    extent_x = np.hypot(a * np.cos(theta), b * np.sin(theta))
+    extent_y = np.hypot(a * np.sin(theta), b * np.cos(theta))
+    visible = (
+        np.isfinite(x) & np.isfinite(y) & np.isfinite(a) & np.isfinite(b)
+        & np.isfinite(theta) & (a > 0) & (b > 0)
+        & (x + extent_x >= x_min - 0.5) & (x - extent_x <= x_max - 0.5)
+        & (y + extent_y >= y_min - 0.5) & (y - extent_y <= y_max - 0.5)
+    )
+
+    section = data[y_min:y_max, x_min:x_max]
+    vmin, vmax = ZScaleInterval().get_limits(section)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.imshow(
+        section, cmap='gray', origin='lower', vmin=vmin, vmax=vmax,
+        extent=(x_min - 0.5, x_max - 0.5, y_min - 0.5, y_max - 0.5),
+        interpolation='nearest'
+    )
+
+    # Draw all outlines in two collections
+    handles = []
+    for selected, color, label in (
+            (usable, '#00bfff', 'Used for magnitudes'),
+            (~usable, '#ff7f0e', 'Excluded')):
+        indices = np.flatnonzero(visible & selected)
+        patches = [
+            Ellipse((x[i], y[i]), 2 * a[i], 2 * b[i], angle=np.rad2deg(theta[i]))
+            for i in indices
+        ]
+        ax.add_collection(PatchCollection(
+            patches, facecolors='none', edgecolors=color, linewidths=0.65
+        ))
+        handles.append(Patch(
+            facecolor='none', edgecolor=color, label=f'{label}: {len(indices)}'
+        ))
+
+    ax.set_xlim(x_min - 0.5, x_max - 0.5)
+    ax.set_ylim(y_min - 0.5, y_max - 0.5)
+    ax.set_xlabel('X Pixel (cropped image)')
+    ax.set_ylabel('Y Pixel (cropped image)')
+    ax.set_title(f'{np.count_nonzero(visible)} detected sources with fitted ellipses')
+    ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(0.5, -0.065))
+    fig.tight_layout()
+    if filename is not None:
+        fig.savefig(filename, dpi=220, bbox_inches='tight')
+    if show:
+        plt.show()
+        plt.close(fig)
+
+    return fig, ax
+
 
 def AB_calibration(result, header, bins=100):
 

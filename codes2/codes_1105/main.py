@@ -6,7 +6,7 @@ from bleeding import (mask_whole_bleeding_region, mask_saturated)
 from stars import find_stars
 from aperture_conversion import aperture_center_shape, plot_source_aperture, plot_aperture_scales, optimize_scale
 from source_detection import detect_sources, deblend, crop_array, plot_detected_sources
-from photometry import fixed_aperture_photometry, AB_calibration, population_above_magnitude
+from photometry import fixed_aperture_photometry, AB_calibration, population_above_magnitude, plot_aperture_catalogue
 
 saturation = 36000
 
@@ -107,7 +107,18 @@ results = fixed_aperture_photometry(
     mask=star_masks | saturated_mask | whole_mask
 )
 
-good_results = results[results["flag"] == 0]
+plot_aperture_catalogue(
+    data, results,
+    filename=Path(__file__).resolve().parent / 'outputs' / 'detected_apertures.png'
+)
+
+flux = results['flux']
+valid_flux = flux[np.isfinite(flux)]
+
+if valid_flux.size > 0:
+    print(valid_flux.min(), valid_flux.max())
+else:
+    print("No valid flux measurements")
 #print(good_results)
 
 mags, mag_errs = AB_calibration(results, header)
@@ -132,4 +143,4 @@ plt.xlabel('Magnitude Thresholds')
 plt.ylabel('log10 N(m < threshold)')
 plt.show()
 
-print(coeffs, cov)
+print(coeffs, np.sqrt(cov))
