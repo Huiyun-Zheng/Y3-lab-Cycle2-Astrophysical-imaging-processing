@@ -4,6 +4,7 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.patches import Circle
+from scipy import ndimage as ndi
 
 # %%
 base_dir = Path(__file__).resolve().parent
@@ -11,6 +12,7 @@ data_dir = base_dir / "Astro" / "Fits_Data" / "mosaic.fits"
 
 with fits.open(data_dir) as hdul:
 
+    header = hdul[0].header.copy()
     data = hdul[0].data.copy()
 
 print(data)

@@ -21,6 +21,7 @@ with fits.open(data_dir) as hdul:
 print(data)
 print(data.shape)  # 4611 rows, 2570 columns
 print(header)
+print(repr(header))
 # %%
 plt.imshow(data, cmap='gray')
 plt.show()
