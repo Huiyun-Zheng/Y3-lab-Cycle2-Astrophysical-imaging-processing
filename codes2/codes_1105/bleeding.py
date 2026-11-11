@@ -75,29 +75,85 @@ def spot_linear_sources(
 
         return peak_angles, peak_rhos
 
-def mask_whole_bleeding_region(data, labels, mean, stddev, threshold=3):
-    """
-    Masks bleeding artifacts in the image.
+def find_halo_radius(
+        data, guess_center, radius_low, mean, stddev,
+        bleed_mask=None, max_radius=150,
+        n_sigma=0.4, consecutive=6
+        ):
 
-    Parameters:
-    data (numpy.ndarray): The original image data.
-    labels (numpy.ndarray): The labeled mask of detected sources.
-    mean (float): The mean of the background.
-    stddev (float): The standard deviation of the background.
-    threshold (float): The threshold for masking bleedings.
+    x_center, y_center = guess_center
+    height, width = data.shape
 
-    Returns:
-    masked_data (numpy.ndarray): The data with bleedings masked.
-    """
+    # Keep complete rings inside the image
+    radius_limit = int(min(
+        max_radius,
+        x_center, width - 1 - x_center,
+        y_center, height - 1 - y_center
+    ))
 
-    # Create a mask for bleedings
-    bleeding_mask = (data > mean + threshold * stddev) & (labels > 0)
+    if radius_limit <= radius_low:
+        raise ValueError("Not enough space to search outside radius_low")
 
-    # Mask the bleedings in the data
-    masked_data = np.copy(data)
-    masked_data[bleeding_mask] = mean  # Replace bleeding pixels with background mean
+    # Local section
+    x_min = max(0, int(np.floor(x_center - radius_limit)))
+    x_max = min(width, int(np.ceil(x_center + radius_limit)) + 1)
+    y_min = max(0, int(np.floor(y_center - radius_limit)))
+    y_max = min(height, int(np.ceil(y_center + radius_limit)) + 1)
 
-    return masked_data
+    section = data[y_min:y_max, x_min:x_max]
+    yy, xx = np.ogrid[y_min:y_max, x_min:x_max]
+    distance = np.hypot(xx - x_center, yy - y_center)
+
+    valid = np.isfinite(section)
+    if bleed_mask is not None:
+        valid &= ~bleed_mask[y_min:y_max, x_min:x_max]
+
+    cutoff = mean + n_sigma * stddev
+    count = 0
+
+    # Search outward
+    for r in range(int(np.ceil(radius_low)), radius_limit):
+        ring = (distance >= r) & (distance < r + 1) & valid
+        values = section[ring]
+
+        if values.size == 0:
+            count = 0
+            continue
+
+        if np.median(values) <= cutoff:
+            count += 1
+        else:
+            count = 0
+
+        if count == consecutive:
+            return r - consecutive + 1
+
+    return None
+
+def mask_whole_bleeding_region(data, guess_center, band_radius, halo_radius, mean, stddev,
+        half_width=3, keep_core=True, upper_bound='auto', lower_bound='auto'):
+
+    # Circular mask
+    yy, xx = np.ogrid[:data.shape[0], :data.shape[1]]
+
+    core_mask = (
+        (xx - guess_center[0])**2
+        + (yy - guess_center[1])**2
+    ) <= halo_radius**2
+
+    # Bleeding band mask
+    bleed_mask = bleeding_band_mask(
+        data, guess_center, band_radius, mean, stddev,
+        half_width=half_width,
+        keep_core=keep_core,
+        upper_bound=upper_bound,
+        lower_bound=lower_bound
+    )
+
+    # Combined mask
+    combined_mask = core_mask | bleed_mask
+
+    return combined_mask
 
 def bleeding_band_mask(
         data, guess_center, radius_low, mean, stddev,
@@ -177,3 +233,16 @@ def bleeding_band_mask(
         bleed_mask[y_min:y_max, x_min:x_max] &= ~core_mask
 
     return bleed_mask 
+
+def mask_saturated(data, labels, saturation=36000):
+    # Pixels above the good-data limit
+    saturated_pixels = data > saturation
+
+    # Labels containing these pixels
+    bad_ids = np.unique(labels[saturated_pixels])
+    bad_ids = bad_ids[bad_ids > 0]
+
+    # Mask whole regions and any unlabeled saturated pixels
+    saturation_mask = np.isin(labels, bad_ids) | saturated_pixels
+
+    return saturation_mask
