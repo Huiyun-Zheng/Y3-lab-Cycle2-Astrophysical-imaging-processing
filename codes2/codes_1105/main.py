@@ -6,9 +6,15 @@ from bleeding import (mask_whole_bleeding_region, mask_saturated)
 from stars import find_stars
 from aperture_conversion import aperture_center_shape, plot_source_aperture, plot_aperture_scales, optimize_scale
 from source_detection import detect_sources, deblend, crop_array, plot_detected_sources
-from photometry import fixed_aperture_photometry, AB_calibration, population_above_magnitude, plot_aperture_catalogue
+from photometry import fixed_aperture_photometry, AB_calibration, population_above_magnitude, plot_aperture_catalogue, adjustable_aperture
+from astropy.io import fits
+from psf_star_detection import measure_psf_widths, select_psf_candidates, plot_psf_candidates
+
+from selection_diagnostics import selection_diagnostics
 
 saturation = 36000
+output_dir = Path(__file__).resolve().parent / "outputs"
+output_dir.mkdir(parents=True, exist_ok=True)
 
 # Read the file
 project_dir = Path(__file__).resolve().parent.parent.parent
@@ -16,14 +22,18 @@ fits_path = project_dir / "Astro" / "Fits_Data" / "mosaic.fits"
 header, data = get_fits_data(fits_path)
 
 # Crop once before background fitting, detection, deblending, and plotting.
-crop_x_range = (70, 2450)
-crop_y_range = (0, 4550)
+crop_x_range = (100, 2400)
+crop_y_range = (500, 4500)	
 data = crop_array(data, crop_x_range, crop_y_range)
 x_offset, y_offset = crop_x_range[0], crop_y_range[0]
 
 # Find sources by brightest pixel method
 print(type(data), data.shape, data.dtype)
-labels, mean, stddev = detect_sources(data, threshold=3, min_area=5)
+detection_threshold = 1.5
+min_area = 12
+labels, mean, stddev = detect_sources(
+    data, threshold=detection_threshold, min_area=min_area
+)
 plot_detected_sources(data, labels)
 
 # Example image coordinates
@@ -47,17 +57,13 @@ star_centers_cropped = [
     (x - x_offset, y - y_offset) for x, y in star_centers
 ]
 
-star_centers_cropped = [
-    (x - x_offset, y - y_offset) for x, y in star_centers
-]
-
 star_masks = np.zeros(data.shape, dtype=bool)
 
 for center in star_centers_cropped:
     mask = find_stars(data, labels, center)
     star_masks |= mask > 0
 
-plot_detected_sources(data, star_masks, filename='outputs/detected_stars_overlay.svg')
+plot_detected_sources(data, star_masks, filename=output_dir / 'detected_stars_overlay.svg')
 
 # deblend the sources
 deblended_labels = deblend(data, labels)
@@ -65,7 +71,7 @@ deblended_labels = deblend(data, labels)
 
 # Mask saturated regions
 saturated_mask = mask_saturated(data, labels, saturation=saturation)
-plot_detected_sources(data, saturated_mask, filename='outputs/saturated_regions_overlay.svg')
+plot_detected_sources(data, saturated_mask, filename=output_dir / 'saturated_regions_overlay.svg')
 
 # Crop the picture to avoid edge disturbances
 small_x_range = (1000 - x_offset, 1500 - x_offset)
@@ -101,27 +107,75 @@ scales, fluxes = optimize_scale(
 #plot_aperture_scales(data, labels, mean, stddev, target_label=4, scales=(1.5, 2, 3, 4), figsize=(10, 10))
 
 
-results = fixed_aperture_photometry(
+results = adjustable_aperture(
     data, deblended_labels, mean, stddev,
-    scale=3.0,
+    scales=np.arange(1.5, 5.1, 0.5),
     mask=star_masks | saturated_mask | whole_mask
 )
 
-plot_aperture_catalogue(
-    data, results,
-    filename=Path(__file__).resolve().parent / 'outputs' / 'detected_apertures.png'
+# Check photometry selection before PSF classification
+selection_summary, selection_counts, selection_catalogue = selection_diagnostics(
+    data, results, mean, header,
+    output_dir=output_dir / "selection_diagnostic"
 )
 
-flux = results['flux']
-valid_flux = flux[np.isfinite(flux)]
+# Classify this run's sources
+psf_catalogue = measure_psf_widths(
+    data, deblended_labels, results, header,
+    mask=star_masks | saturated_mask | whole_mask
+)
+psf_catalogue = select_psf_candidates(psf_catalogue)
+psf_catalogue.meta['crop_x'] = list(crop_x_range)
+psf_catalogue.meta['crop_y'] = list(crop_y_range)
+psf_catalogue.meta['detection_threshold'] = float(detection_threshold)
+psf_catalogue.meta['detection_min_area'] = int(min_area)
+psf_catalogue.meta['mask_note'] = 'main.py manual star, saturation and bleeding masks applied'
+psf_catalogue['x_original'] = psf_catalogue['x_center'] + x_offset
+psf_catalogue['y_original'] = psf_catalogue['y_center'] + y_offset
 
+star_ids = psf_catalogue['label'][
+    psf_catalogue['source_class'] == 'star_candidate'
+]
+psf_star_mask = np.isin(deblended_labels, star_ids)
+is_star = np.isin(results['label'], star_ids)
+results_for_counts = results[~is_star]
+print(f'PSF star candidates excluded: {np.count_nonzero(is_star)}')
+
+# Save matching catalogues and candidate mask
+psf_dir = output_dir / 'psf_stars'
+psf_dir.mkdir(parents=True, exist_ok=True)
+psf_catalogue.write(psf_dir / 'psf_catalogue.ecsv', overwrite=True)
+psf_catalogue[psf_catalogue['source_class'] == 'star_candidate'].write(
+    psf_dir / 'star_candidates.csv', overwrite=True
+)
+mask_header = fits.Header()
+mask_header['XOFFSET'] = x_offset
+mask_header['YOFFSET'] = y_offset
+mask_header['COMMENT'] = 'Provisional star-candidate segments in cropped coordinates'
+fits.writeto(
+    psf_dir / 'star_candidate_mask.fits', psf_star_mask.astype('uint8'),
+    header=mask_header, overwrite=True
+)
+plot_psf_candidates(
+    data, psf_catalogue, psf_dir,
+    x_offset=x_offset, y_offset=y_offset, show=False
+)
+results_for_counts.write(output_dir / 'photometry_for_counts.ecsv', overwrite=True)
+
+# Plot the catalogue used for counting
+plot_aperture_catalogue(
+    data, results_for_counts,
+    filename=output_dir / 'detected_apertures.png'
+)
+
+flux = np.asarray(results_for_counts['flux'])
+valid_flux = flux[np.isfinite(flux) & (flux > 0)]
 if valid_flux.size > 0:
     print(valid_flux.min(), valid_flux.max())
 else:
-    print("No valid flux measurements")
-#print(good_results)
+    raise ValueError('No positive valid flux measurements remain')
 
-mags, mag_errs = AB_calibration(results, header)
+mags, mag_errs = AB_calibration(results_for_counts, header)
 
 mag_thre, populations = population_above_magnitude(mags)
 populations = np.array(populations)
@@ -136,11 +190,11 @@ coeffs, cov = np.polyfit(
 
 fit = np.poly1d(coeffs)
 plt.plot(mag_thre[fitting_mask], fit(mag_thre[fitting_mask]), c='red')
-plt.scatter(mag_thre, np.log10(populations), c='blue')
+plt.scatter(mag_thre[positive], np.log10(populations[positive]), c='blue')
 plt.title('N - m relationship')
 plt.xlabel('Magnitude Thresholds')
-#plt.xlim((0, 20))
+plt.xlim((10, 30))
 plt.ylabel('log10 N(m < threshold)')
 plt.show()
 
-print(coeffs, np.sqrt(cov))
+print(coeffs, np.sqrt(np.diag(cov)))

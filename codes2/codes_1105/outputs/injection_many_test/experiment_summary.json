@@ -1,0 +1,37 @@
+{
+  "input": "/Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/Astro/Fits_Data/mosaic.fits",
+  "seed": 42,
+  "settings": {
+    "background_box": 128,
+    "saturation_override": null,
+    "artefact_sigma": 3.0,
+    "halo_sigma": 1.5,
+    "artefact_padding": 4,
+    "boundary_padding": 4,
+    "smooth_sigma": 1.0,
+    "detection_sigma": 5.0,
+    "growth_sigma": 2.0,
+    "min_pixels": 8,
+    "peak_separation": 8,
+    "peak_prominence_sigma": 3.0,
+    "peak_prominence_fraction": 0.05,
+    "min_aperture_radius": 5.0,
+    "max_aperture_radius": 35.0,
+    "ellipse_threshold": 1.8
+  },
+  "spacing": 200,
+  "grid_margin": 200,
+  "frames": 1,
+  "sources_per_frame": 15,
+  "injected": 15,
+  "match_radius": 3.0,
+  "status_counts": {
+    "matched": 8,
+    "near_original": 4,
+    "no_match": 3
+  },
+  "conservative_flux_match_fraction": 0.5333333333333333,
+  "clean_usable_recoveries": 8,
+  "scope": "Cutout pipeline with sparse, mask-avoiding Gaussian injections",
+  "note": "matched includes proximity and positive finite flux requirements; this fraction is not pure detection completeness."
+}

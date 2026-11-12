@@ -4,7 +4,9 @@ from get import get_fits_data
 from pathlib import Path
 import matplotlib.pyplot as plt
 from source_detection import detect_sources, deblend
-from photometry import fixed_aperture_photometry, plot_aperture_catalogue
+from photometry import fixed_aperture_photometry, adjustable_aperture, plot_aperture_catalogue
+from run_copy_photometry import run_pipeline, recovery_rows
+from photometry import plot_aperture_catalogue, AB_calibration
 
 def elliptical_gaussian(
         shape, center, flux, sigma_major, sigma_minor, theta=0
@@ -40,35 +42,34 @@ def generate_background(type='uniform', image=None):
 
     return background
 
+from source_detection_copy import run_detection
 
 # Create the simulated image
 project_dir = Path(__file__).resolve().parent.parent.parent
 fits_path = project_dir / "Astro" / "Fits_Data" / "mosaic.fits"
 header, data = get_fits_data(fits_path)
 background = generate_background(type='image', image=data)
-sim_source_1 = elliptical_gaussian(background.shape, (100, 80), 2e5, 30, 10, np.pi / 6)
+flux = 2e6
+sim_source_1 = elliptical_gaussian(background.shape, (100, 80), flux, 50, 20, np.pi / 6)
 sim_image_1 = background + sim_source_1
 
-# Detect and deblend
-labels, mean, stddev = detect_sources(
-    sim_image_1, threshold=3, min_area=5
-)
-deblended_labels = deblend(sim_image_1, labels)
-
-# Measure apertures
-results = fixed_aperture_photometry(
-    sim_image_1, deblended_labels, mean, stddev, scale=3
-)
+# Detect and measure apertures
+results, badmask, processed = run_pipeline(sim_image_1, project_dir / "Astro" / "codes2" / "codes_1105"/'outputs', header=header)
 
 # Plot near the injected source
 fig, ax = plot_aperture_catalogue(
-    sim_image_1, results,
-    x_range=(0, 250),
-    y_range=(0, 200),
-    figsize=(10, 8),
-    show=False
+    sim_image_1, results, show=False
 )
 
-ax.plot(100, 50, '+', color='lime', markersize=12)
-plt.show()
-plt.close(fig)
+# Calculate magnitude
+mags, zp_errors = AB_calibration(
+    results, header, show=False
+)
+
+# At injection
+ZP = header['MAGZPT']
+ZP_error = header['MAGZRR']
+input_mag = ZP - 2.5 * np.log10(flux * header['GAIN'] / header['EXPTIME'])
+
+print(input_mag)
+print(min(mags))

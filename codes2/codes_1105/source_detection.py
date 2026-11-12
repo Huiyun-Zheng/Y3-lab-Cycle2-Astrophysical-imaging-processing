@@ -27,12 +27,28 @@ from aperture_conversion import aperture_center_shape, plot_source_aperture, plo
 
 saturation = 36000
 
+def filter_for_detection(data, mean, smooth_sigma=1.5):
+    """Smooth background-subtracted data; ignore nonfinite pixels."""
+
+    if not np.isfinite(smooth_sigma) or smooth_sigma <= 0:
+        raise ValueError("smooth_sigma must be positive")
+
+    valid = np.isfinite(data)
+    residual = np.where(valid, data - mean, 0.0)
+    filtered = ndi.gaussian_filter(residual, sigma=smooth_sigma)
+    coverage = ndi.gaussian_filter(valid.astype(float), sigma=smooth_sigma)
+    np.divide(filtered, coverage, out=filtered, where=coverage > 0)
+    filtered[~valid | (coverage == 0)] = np.nan
+    return filtered
+
+
 def detect_sources(
     data, bins=300, hist_range=(3300, 3600),
-    threshold=3, min_area=5
+    threshold=3, min_area=5, smooth_sigma=None
 ):
     """
-    Assuming a uniform background. Labels have the same shape as input data.
+    Assume a uniform background; smooth_sigma=None disables smoothing.
+    Returned mean and stddev describe the original image.
     """
 
     valid = np.isfinite(data)
@@ -40,8 +56,17 @@ def detect_sources(
     if not np.isfinite(mean) or not np.isfinite(stddev) or stddev <= 0:
         raise ValueError("Invalid background fit")
 
-    # Find pixels that are above the threshold
-    mask = valid & (data > mean + threshold * stddev)
+    if smooth_sigma is None:
+        mask = valid & (data > mean + threshold * stddev)
+    else:
+        filtered = filter_for_detection(data, mean, smooth_sigma)
+        _, filtered_bg, filtered_std = sigma_clipped_stats(
+            filtered[np.isfinite(filtered)], sigma=3, maxiters=5
+        )
+        if not np.isfinite(filtered_std) or filtered_std <= 0:
+            raise ValueError("Invalid filtered background noise")
+        mask = valid & (filtered > filtered_bg + threshold * filtered_std)
+        print(f"Filtered background RMS: {filtered_std:.3f} ADU")
 
     # Label connected components in the mask
     connectivity = ndi.generate_binary_structure(2, 2)  # 8-connectivity
@@ -68,7 +93,7 @@ def deblend(data, labels):
     """
     segment_map = SegmentationImage(labels)
     segment_map_deblended = deblend_sources(
-        data, segment_map, n_pixels=10, n_levels=32, contrast=0.001
+        data, segment_map, n_pixels=10, n_levels=32, contrast=0.05
     )
     labels_deblended = segment_map_deblended.data
 

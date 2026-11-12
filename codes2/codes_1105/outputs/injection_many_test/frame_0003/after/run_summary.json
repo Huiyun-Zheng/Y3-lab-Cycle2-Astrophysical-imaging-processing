@@ -1,0 +1,20 @@
+{
+  "input": null,
+  "saturation_used": 36000.0,
+  "initial_background": 3422.0,
+  "initial_noise": 14.349510192871094,
+  "candidates": 25,
+  "usable_candidates": 12,
+  "saturated_pixels": 0,
+  "artefact_pixels": 0,
+  "artefact_regions": 0,
+  "excluded_fraction": 0.0784,
+  "negative_image_candidates": 0,
+  "limitations": [
+    "SATURATE is inherited metadata: verify the threshold for this mosaic.",
+    "Connected masks can absorb neighbours and miss disconnected or faint artefacts.",
+    "An artefact without a saturation seed is not automatically identified by this method.",
+    "Peaks and watershed regions are candidates, not a complete galaxy catalogue.",
+    "Fluxes omit wings; GAIN, completeness and photometric uncertainty are not calibrated."
+  ]
+}

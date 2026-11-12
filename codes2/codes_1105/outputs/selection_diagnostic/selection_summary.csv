@@ -1,0 +1,10 @@
+selection,number
+All detected labels,6337
+Used for magnitudes,6066
+Excluded total,271
+Edge flag,42
+Neighbour flag,247
+Mask/nonfinite flag,93
+Invalid ellipse flag,0
+Neighbour only,136
+Unflagged nonpositive/nonfinite flux,2
