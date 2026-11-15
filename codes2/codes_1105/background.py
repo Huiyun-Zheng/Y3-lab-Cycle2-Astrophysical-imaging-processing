@@ -24,7 +24,7 @@ def plot_histogram(data, bins=300, range=(3300, 3600)):
     plt.show()
     
 
-def fit_gaussian(data, bins=50, range=(3300, 3600)):
+def fit_gaussian(data, bins=300, range=(3300, 3600)):
     """
     Fits a Gaussian to the histogram of the data.
 

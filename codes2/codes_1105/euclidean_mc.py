@@ -26,14 +26,52 @@ def simulate_euclidean(
 
     return distances, magnitudes
 
+def simulate_euclidean_abs(
+        n_sources=100000, absolute_magnitude=-20,
+        max_distance=1e10, seed=42
+        ):
+    """Return distances, magnitudes and Gaussian sizes in pixels."""
+
+    rng = np.random.default_rng(seed)
+
+    # Uniform in volume
+    u = 1 - rng.random(n_sources)
+    distances = max_distance * u**(1 / 3)
+
+    # Apparent magnitudes
+    magnitudes = absolute_magnitude + 5 * np.log10(distances / 10)
+
+    # Angular sizes in pixels
+    sigma_major = rng.uniform(2, 5, n_sources)
+    axis_ratio = rng.uniform(0.5, 1, n_sources)
+    sigma_minor = sigma_major * axis_ratio
+
+    return distances, magnitudes, sigma_major, sigma_minor
+
+def simulate_apparent(n_sources=100000, seed=42):
+
+    rng = np.random.default_rng(seed)
+
+    # Uniform in apparent magnitude
+    m_limit = 30
+    u = 1 - rng.random(n_sources)
+    magnitudes = m_limit + np.log10(u) / 0.6
+
+    # Gaussian sizes in pixels
+    sigma_major = rng.uniform(2, 10, n_sources)
+    axis_ratio = rng.uniform(0.5, 1, n_sources)
+    sigma_minor = sigma_major * axis_ratio
+
+    return magnitudes, sigma_major, sigma_minor
+
 
 if __name__ == '__main__':
     n_sources = 100000
-    absolute_magnitude = -20
+    absolute_magnitude = -40
     max_distance = 1e10  # pc; simulation boundary
     seed = 42
 
-    distances, magnitudes = simulate_euclidean(
+    distances, magnitudes, semi_major, semi_minor = simulate_euclidean_abs(
         n_sources, absolute_magnitude, max_distance, seed
     )
 

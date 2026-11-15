@@ -8,17 +8,35 @@ assignment is forced when a detection could belong to several injections.
 import numpy as np
 from astropy.table import Table
 
-
-def match_many_recovery(
+# Match the recovered sources with the injected without mis-identifying the original data.
+def match_recovery(
         injected, detected, original_detected,
-        match_radius=3., isolation_radius=None
+        match_radius=3., isolation_radius=None, bg_type='raw'
         ):
-    """Match by local pixel positions, preserving one output row per injection.
-
-    Run the original pipeline once for EVERY frame before injection. Empty
-    frames contribute no rows to original_detected. These centre-only checks
-    cannot identify every halo or extended blend; inspect uncertain cases.
     """
+    Match by local pixel positions, preserving one output row per injection.
+
+    Run the original pipeline once for EVERY frame before injection. 
+    Empty frames contribute no rows to original_detected. 
+    These centre-only checks cannot identify every halo or extended blend; inspect uncertain cases.
+
+    Arguments:
+    injected : AstroPy.Table
+    detected : AstroPy.Table
+    original_detected : AstroPy.Table
+    match_radius : float
+    isolation_radius : float | None
+
+    match_radius is the threshold, if the newly detected source has a separation 
+    with the injected data under which it is identified as the injected source.
+
+    isolation radius is used to identify the original sources nearby.
+
+    If simulated backrgound without any sources, input None for original_detected and 'sim' for bg_type.
+    """
+
+    if bg_type == 'sim':
+        original_detected = Table(names=('frame_id', 'x_local', 'y_local'), dtype=('i8', 'f8', 'f8'))
 
     # Check table columns and coordinate conventions
     required = (
@@ -55,19 +73,22 @@ def match_many_recovery(
         if np.any(~np.isin(table['frame_id'], injected['frame_id'])):
             raise ValueError('A detection frame is absent from injected')
 
+    # Create a list for all outputs, None at first and replaced with info if identified
     output_rows = [None] * len(injected)
+    # Find frame for each section and sort out info
     for frame_id in np.unique(injected['frame_id']):
-        indices = np.flatnonzero(injected['frame_id'] == frame_id)
+        indices = np.flatnonzero(injected['frame_id'] == frame_id) # flatnonzero returns indices
         sources = injected[indices]
-        after = detected[detected['frame_id'] == frame_id]
-        before = original_detected[original_detected['frame_id'] == frame_id]
+        after = detected[detected['frame_id'] == frame_id] # detection after injection
+        before = original_detected[original_detected['frame_id'] == frame_id] # detection before injection
 
         # 1. Find candidates for every injected source
         candidate_lists = []
+        # Number count of candidate injected sources corresponding to this detected source
         candidate_use = np.zeros(len(after), dtype=int)
         for source in sources:
             distance = np.hypot(after['x_local']-source['x_local'],
-                                after['y_local']-source['y_local'])
+                                after['y_local']-source['y_local']) # computes the hypotenuse
             nearby = np.flatnonzero(distance <= match_radius)
             candidate_lists.append(nearby)
             candidate_use[nearby] += 1
@@ -76,21 +97,31 @@ def match_many_recovery(
         for local_i, (source, nearby) in enumerate(zip(sources, candidate_lists)):
             x_in, y_in = float(source['x_local']), float(source['y_local'])
             flux_in = float(source['flux_in'])
-            check_radius = (match_radius + 3*float(source['sigma_major'])
-                            if isolation_radius is None else float(isolation_radius))
+            if isolation_radius is None:
+                check_radius = match_radius + 3 * float(source['sigma_major']) # check within 3 sigma
+            else:
+                check_radius = isolation_radius
+            # find the distance between this injection source with all the original sources
             old_distance = np.hypot(before['x_local']-x_in, before['y_local']-y_in)
+            # count the number of original sources in the radius threshold
             n_original = int(np.count_nonzero(old_distance <= check_radius))
 
             # 3. Flag artificial crowding between injected sources
+            # find the distance between this injection source with all the injected sources
             injection_distance = np.hypot(sources['x_local']-x_in, sources['y_local']-y_in)
+            # define the separation limit between every pair of injected sources
             separation_limit = 3*(sources['sigma_major']+source['sigma_major'])
+            # identify the pairs within the limit
             other_injections = np.asarray(injection_distance < separation_limit)
+            # exclude self and sum all nearby injections within the limit
             other_injections[local_i] = False
             n_injected = int(other_injections.sum())
 
+            # default values
             detection_id = -1
             x_out = y_out = distance_out = flux_out = flux_ratio = np.nan
             n_claimants = 0
+
             if len(nearby) == 0:
                 status = 'no_match'
             elif len(nearby) > 1:
@@ -105,11 +136,11 @@ def match_many_recovery(
                 n_claimants = int(candidate_use[j])
 
                 # 4. Never count the same detection twice as matched
-                if n_claimants > 1:
+                if n_claimants > 1:    # near two injections
                     status = 'shared_detection'
-                elif n_original > 0:
+                elif n_original > 0:    # unique candidate but original nearby
                     status = 'near_original'
-                elif n_injected > 0:
+                elif n_injected > 0:    # no original source but nearby injections
                     status = 'near_injected'
                 elif not np.isfinite(flux_out) or flux_out <= 0:
                     status = 'invalid_flux'
@@ -133,7 +164,7 @@ def match_many_recovery(
             'n_candidates', 'n_claimants', 'n_original_near', 'n_injected_near'
         ),
         dtype=('i8', 'i8', 'i8', 'U20', 'f8', 'f8', 'f8', 'f8', 'f8',
-               'f8', 'f8', 'f8', 'i8', 'i8', 'i8', 'i8')
+            'f8', 'f8', 'f8', 'i8', 'i8', 'i8', 'i8')
     )
     matches.meta['match_radius_pixels'] = float(match_radius)
     matches.meta['matching_rule'] = 'Only mutually unique candidates can be matched'
@@ -145,11 +176,14 @@ def match_many_recovery(
         'Conservative centre-only candidate matching, not a deblender or a global '
         'optimal assignment. Ambiguous, shared and crowded cases are not automatically '
         'clean recoveries. No input/output flux-agreement cut is applied.')
+
     return matches
 
 
 if __name__ == '__main__':
+
     # Artificial example: two injections compete for detection 9
+    # Change the paramters here for tests
     injected = Table(
         rows=[(1, 1, 30., 30., 1000., 2.),
               (1, 2, 80., 80., 1000., 2.),
@@ -162,7 +196,7 @@ if __name__ == '__main__':
     )
     original_detected = Table(
         names=('frame_id', 'x_local', 'y_local'), dtype=('i8', 'f8', 'f8'))
-    matches = match_many_recovery(injected, detected, original_detected)
+    matches = match_recovery(injected, detected, original_detected)
     print('DEMO DATA ONLY: not your real recovery result.\n')
     matches['frame_id', 'injected_id', 'detection_id', 'status', 'n_claimants'].pprint(
         max_lines=-1, max_width=-1)

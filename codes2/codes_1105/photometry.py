@@ -379,6 +379,10 @@ def plot_aperture_catalogue(
 
 
 def AB_calibration(result, header, bins=100, *, show=True, filename=None):
+    """
+    Calculate the relative magnitude in the AB system.
+    The input result should be in original ADS without gain.
+    """
 
     valid = (
         (result['flag'] == 0)

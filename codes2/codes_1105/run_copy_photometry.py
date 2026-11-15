@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
+import matplotlib.pyplot as plt
 
 from source_detection_copy import run_detection
 from photometry import (
@@ -21,7 +22,14 @@ from photometry import (
 
 
 def run_pipeline(data, output_dir, settings=None, *, header=None):
-    """Return (photometry_table, badmask, processed); retain all detections."""
+    """
+    Return (photometry_table, badmask, processed); retain all detections.
+
+    Arguments:
+    data: FITS | np.ndarray (2d)
+    output_dir: Path
+    """
+
     catalogue, badmask, processed = run_detection(
         data, output_dir, settings, header=header,
     )
@@ -37,6 +45,7 @@ def recovery_rows(results, trial_id, *, x_offset=0.0, y_offset=0.0):
     the cutout origin as offsets when global positions are also needed.
     An existing detection may have NaN flux or usable=False; retain it.
     """
+
     detected = Table()
     detected['trial_id'] = np.full(len(results), trial_id, dtype=np.int64)
     for name, source in {
@@ -77,7 +86,7 @@ def main():
         image, results,
         filename=args.output / 'photometry_apertures.png', show=False,
     )
-    import matplotlib.pyplot as plt
+    
     plt.close(fig)
 
     # AB_calibration returns only selected rows. Restore alignment to all
