@@ -1,0 +1,46 @@
+{
+  "frames": 10,
+  "sources_per_frame": 5,
+  "injected": 50,
+  "seed": 42,
+  "groups": {
+    "single": {
+      "n_per_frame": 5,
+      "mag_range": [
+        23.5,
+        24.0
+      ]
+    }
+  },
+  "group_size_default": {
+    "r_eff": 5.0,
+    "r_eff_range": null
+  },
+  "group_summary": [
+    {
+      "group": "single",
+      "n_injected": 50,
+      "n_recovered": 2,
+      "n_usable": 2,
+      "n_clean": 2,
+      "detection_fraction": 0.04,
+      "usable_fraction": 0.04,
+      "clean_fraction": 0.04
+    }
+  ],
+  "background_type": "image",
+  "profile": "exponential",
+  "min_separation_pixels": 0,
+  "edge_margin_pixels": 25,
+  "status_counts": {
+    "matched": 2,
+    "no_match": 48
+  },
+  "unique_position_matches": 2,
+  "detection_recoveries": 2,
+  "usable_photometry_recoveries": 2,
+  "clean_usable_recoveries": 2,
+  "sampling_check_outside_2_percent": 0,
+  "note": "Centre matching with conservative crowding flags. This summary is not a calibrated completeness correction.",
+  "real_background_note": "The same untouched real cutout is reused for each independent frame; its baseline is detected once."
+}

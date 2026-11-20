@@ -41,7 +41,7 @@ def match_recovery(
     # Check table columns and coordinate conventions
     required = (
         (injected, 'injected', ('frame_id', 'injected_id', 'x_local', 'y_local',
-                                'flux_in', 'sigma_major')),
+                                'flux_in')),
         (detected, 'detected', ('frame_id', 'detection_id', 'x_local', 'y_local', 'flux_out')),
         (original_detected, 'original_detected', ('frame_id', 'x_local', 'y_local'))
     )
@@ -61,7 +61,12 @@ def match_recovery(
         keys = list(zip(table['frame_id'], table[id_column]))
         if len(set(keys)) != len(keys):
             raise ValueError(f'{id_column} must be unique within each frame')
-    for column in ('flux_in', 'sigma_major'):
+    # Explicit radii support non-Gaussian source profiles.
+    explicit_radius = 'crowding_radius' in injected.colnames
+    radius_column = 'crowding_radius' if explicit_radius else 'sigma_major'
+    if radius_column not in injected.colnames:
+        raise ValueError("injected requires crowding_radius or sigma_major")
+    for column in ('flux_in', radius_column):
         if not np.all(np.isfinite(injected[column]) & (injected[column] > 0)):
             raise ValueError(f'{column} must be positive and finite')
     if not np.isfinite(match_radius) or match_radius <= 0:
@@ -98,7 +103,9 @@ def match_recovery(
             x_in, y_in = float(source['x_local']), float(source['y_local'])
             flux_in = float(source['flux_in'])
             if isolation_radius is None:
-                check_radius = match_radius + 3 * float(source['sigma_major']) # check within 3 sigma
+                source_radius = (float(source['crowding_radius']) if explicit_radius
+                                 else 3 * float(source['sigma_major']))
+                check_radius = match_radius + source_radius
             else:
                 check_radius = isolation_radius
             # find the distance between this injection source with all the original sources
@@ -110,7 +117,10 @@ def match_recovery(
             # find the distance between this injection source with all the injected sources
             injection_distance = np.hypot(sources['x_local']-x_in, sources['y_local']-y_in)
             # define the separation limit between every pair of injected sources
-            separation_limit = 3*(sources['sigma_major']+source['sigma_major'])
+            if explicit_radius:
+                separation_limit = sources['crowding_radius'] + source['crowding_radius']
+            else:
+                separation_limit = 3*(sources['sigma_major']+source['sigma_major'])
             # identify the pairs within the limit
             other_injections = np.asarray(injection_distance < separation_limit)
             # exclude self and sum all nearby injections within the limit
@@ -169,9 +179,13 @@ def match_recovery(
     matches.meta['match_radius_pixels'] = float(match_radius)
     matches.meta['matching_rule'] = 'Only mutually unique candidates can be matched'
     matches.meta['isolation_rule'] = (
-        'match_radius + 3*sigma_major' if isolation_radius is None
+        ('match_radius + crowding_radius' if explicit_radius
+         else 'match_radius + 3*sigma_major') if isolation_radius is None
         else f'fixed {float(isolation_radius)} pixels')
-    matches.meta['injection_overlap_rule'] = 'Flag pairs closer than 3*(sigma_major_i+sigma_major_j)'
+    matches.meta['injection_overlap_rule'] = (
+        'Flag pairs closer than crowding_radius_i + crowding_radius_j'
+        if explicit_radius else 'Flag pairs closer than 3*(sigma_major_i+sigma_major_j)'
+    )
     matches.meta['warning'] = (
         'Conservative centre-only candidate matching, not a deblender or a global '
         'optimal assignment. Ambiguous, shared and crowded cases are not automatically '

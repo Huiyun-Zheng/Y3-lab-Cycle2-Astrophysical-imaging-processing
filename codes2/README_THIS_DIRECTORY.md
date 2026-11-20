@@ -59,7 +59,8 @@ Inject Gaussian sources and assess their recovery using the
 
 Run from the `codes_1105` directory.
 
-### Real background
+### Gaussian
+#### Real background
 
 ```bash
 python3 injection_recovery_many.py \
@@ -72,7 +73,7 @@ Sources are added to real image cutouts. Each cutout is detected before
 and after injection. Placements avoid excluded regions and limit overlap
 between injected sources; existing astronomical sources remain present.
 
-### Simulated background
+#### Simulated background
 
 ```bash
 python3 injection_recovery_many.py \
@@ -87,6 +88,55 @@ The FITS file supplies calibration information and reference background
 statistics. The simulation uses Euclidean catalogue magnitudes,
 random-width Gaussian sources, Gaussian sky noise and source Poisson
 noise. Injected sources may overlap.
+
+### Intrinsic galaxy convolve with psf
+bright v.s. faint
+```bash
+python3 "/Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/codes2/codes_1105/completeness.py" \
+    --background image \
+    --x-range 640 1056 \
+    --y-range 4032 4448 \
+    --n-bright 5 \
+    --bright-mag-range 18 20 \
+    --n-faint 10 \
+    --faint-mag-range 20 23 \
+    --n-frames 3 \
+    --bright-r-eff-range 1 3 \
+    --faint-r-eff-range 1 3 \
+    --seed 42 \
+    --output Path(__file__).resolve().parent / 'outputs' / 'completeness'
+ ```
+
+completeness test
+```bash
+python3 "/Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/codes2/codes_1105/completeness.py" \
+    --background image \
+    --x-range 640 1056 \
+    --y-range 4032 4448 \
+    --n-source 5 \
+    --n-frame 10 \
+    --mag-range 25.5 26.0 \
+    --r-eff 5 \
+    --seed 42 \
+    --profile 'deVau' \
+    --output 'outputs/completeness_test_1119_deVau/m25.5_26.0'
+```
+```bash
+python3 "/Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/codes2/codes_1105/completeness.py" \
+    --background image \
+    --x-range 640 1056 \
+    --y-range 4032 4448 \
+    --n-source 5 \
+    --n-frame 10 \
+    --mag-range 26.0 26.5 \
+    --r-eff 5 \
+    --seed 42 \
+    --profile 'deVau' \
+    --output 'outputs/completeness_test_1119_deVau/m26.0_26.5'
+```
+
+
+saved to outputs/completeness_multiple
 
 ## Main parameters
 
@@ -113,6 +163,7 @@ Both modes save:
 - `experiment_summary.json`: settings and recovery statistics.
 
 Per-frame detector outputs are saved under `frame_XXXX/`.
+
 
 ## Recovery definitions
 

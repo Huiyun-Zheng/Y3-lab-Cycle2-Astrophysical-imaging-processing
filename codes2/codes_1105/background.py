@@ -24,7 +24,7 @@ def plot_histogram(data, bins=300, range=(3300, 3600)):
     plt.show()
     
 
-def fit_gaussian(data, bins=300, range=(3300, 3600)):
+def fit_gaussian(data, bins=300, range=(3300, 3600), *, show=True, filename=None):
     """
     Fits a Gaussian to the histogram of the data.
 
@@ -68,7 +68,7 @@ def fit_gaussian(data, bins=300, range=(3300, 3600)):
 
     # Plot the histogram and the fitted Gaussian
     plot_data = np.arange(range[0], range[1], 3)
-    plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6))
     plt.hist(data.ravel(), bins=bins, color='blue', alpha=0.7, range=range, label='Data Histogram')
     plt.plot(plot_data, gaussian(plot_data, *popt), color='red', label='Fitted Gaussian')
     plt.title('Histogram with Fitted Gaussian')
@@ -76,7 +76,12 @@ def fit_gaussian(data, bins=300, range=(3300, 3600)):
     plt.ylabel('Frequency', fontsize=12)
     plt.legend()
     plt.grid()
-    plt.show()
+    if filename is not None:
+        fig.savefig(filename, dpi=180, bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
     return mean, stddev
 

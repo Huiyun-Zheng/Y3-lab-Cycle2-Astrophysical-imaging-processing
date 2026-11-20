@@ -1,0 +1,2 @@
+region_id,x_start,x_stop,y_start,y_stop,masked_pixels,saturated_pixels
+1,37,183,212,319,10086,1
