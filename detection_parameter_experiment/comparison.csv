@@ -1,0 +1,10 @@
+variant,detection_sigma,growth_sigma,smooth_sigma,candidates,negative_candidates,photometric_sources,likely_stars,remaining_sources,area_deg2,slope_19_24,analysis_directory,elapsed_seconds
+baseline,5.0,2.0,1.0,7437,201,4807,34,4773,0.05503379008333333,0.4620928897539842,variants/baseline/analysis/psf_run_fpjzhh4e,0.0
+lower_peak,4.0,2.0,1.0,9112,405,6333,21,6312,0.05503379008333333,0.4556845433840577,variants/lower_peak/analysis/psf_run_dfhnwj5e,0.0
+lower_growth,5.0,1.5,1.0,7439,201,4028,13,4015,0.05503379008333333,0.45335284851351715,variants/lower_growth/analysis/psf_run_p0mmy4ui,0.0
+smooth_1p5,5.0,2.0,1.5,7187,180,4377,17,4360,0.05503379008333333,0.4468861972738119,variants/smooth_1p5/analysis/psf_run_s3y_5dm1,0.0
+smooth_2p0,5.0,2.0,2.0,6497,155,3840,12,3828,0.05503379008333333,0.44926316244936343,variants/smooth_2p0/analysis/psf_run_acsyenqg,0.0
+smooth_1p5_lower_growth,5.0,1.5,1.5,7187,180,3565,10,3555,0.05503379008333333,0.4455738911352451,variants/smooth_1p5_lower_growth/analysis/psf_run_udmcww7c,0.0
+higher_growth_2p5,5.0,2.5,1.0,7458,200,5389,29,5360,0.05503379008333333,0.4448752736972567,variants/higher_growth_2p5/analysis/psf_run_3hwkgs41,22.5
+higher_growth_3p0,5.0,3.0,1.0,7522,194,5821,39,5782,0.05503379008333333,0.4396243678554455,variants/higher_growth_3p0/analysis/psf_run_fdmkdx7v,27.2
+smooth_0p7,5.0,2.0,0.7,6947,205,4801,26,4775,0.05503379008333333,0.4428987753450387,variants/smooth_0p7/analysis/psf_run_4j7hey3m,22.5

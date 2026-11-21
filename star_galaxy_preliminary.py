@@ -18,11 +18,31 @@ class MorphologySettings:
 
 
 def measure_morphology(catalogue, residual, noise, excluded, segments, settings):
-    """Measure half-light radius and F(4 pix) / F(12 pix) on clean cutouts.
+    """
+    Measure source size and central light concentration.
 
-    Half-light radii refer only to the light inside the outer aperture, not
-    the total source light. Keep signed background-subtracted pixels: clipping
-    negative pixels would artificially add sky light to faint objects.
+    Inputs:
+        catalogue: Source table containing positions, segment IDs,
+            and usable flags.
+        residual: The unsmoothed, background-subtracted image.
+        noise: The background noise estimate at each pixel.
+        excluded: A Boolean mask marking pixels to avoid.
+        segments: The source-label image.
+        settings: A MorphologySettings object.
+
+    Returns:
+        result: A copy of the catalogue with three added columns:
+            half_light_radius_pix: Radius enclosing half the signed
+                flux measured inside the outer aperture.
+            concentration: Inner-aperture flux divided by
+                outer-aperture flux.
+            morphology_sky_snr: Outer-aperture flux divided by an
+                approximate background-noise error.
+
+        Unavailable measurements remain NaN. No rows are removed.
+
+    The half-light radius refers to light inside the outer aperture,
+    not the source's true total light.
     """
 
     result = catalogue.copy()
@@ -88,13 +108,31 @@ def measure_morphology(catalogue, residual, noise, excluded, segments, settings)
 
 
 def classify_sources(catalogue, residual, noise, excluded, segments, saturation, settings=None):
-    """Return a new table and an empirical reference for compact, round sources.
+    """
+    Flag sources that match an automatically estimated stellar reference.
 
-    Bright, round, unsaturated sources define the most populated size group.
-    Its median size/concentration is a provisional stellar reference, not a
-    confirmed PSF. Only sources matching the stellar criteria are removed.
-    Every other source, including those without reliable morphology, is labelled
-    galaxy by assumption. Photometry quality is checked separately downstream.
+    Inputs:
+        catalogue: Source table with positions, quality flags,
+            peak measurements, segment IDs, and elongation.
+        residual: The unsmoothed, background-subtracted image.
+        noise: The background noise estimate at each pixel.
+        excluded: A Boolean mask marking pixels to avoid.
+        segments: The source-label image.
+        saturation: The saturation threshold in original image units.
+        settings: A MorphologySettings object, or None for defaults.
+
+    Returns:
+        result: A new catalogue containing morphology measurements
+            and is_star, source_class, and stellar_reference columns.
+            No rows are removed. The label "galaxy" means only that
+            the source was not flagged as a star; it includes
+            uncertain and unmeasured sources.
+        reference: A dictionary containing the reference half-light
+            radius, concentration, and number of reference sources.
+
+    Build a provisional reference from the most common size group
+    among bright, round sources. This is not a confirmed PSF model.
+    Raise ValueError if too few reference sources are available.
     """
 
     settings = MorphologySettings() if settings is None else settings

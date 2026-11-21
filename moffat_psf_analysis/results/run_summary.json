@@ -1,0 +1,124 @@
+{
+  "created_utc": "2026-11-18T23:53:04.208068+00:00",
+  "method": "Pixel-integrated elliptical Moffat; local profile and precision-bounded width equivalence",
+  "settings": {
+    "measurement_mag_limit": 23.0,
+    "classification_mag_limit": 23.0,
+    "reference_mag_limit": 21.5,
+    "fit_radius": 12,
+    "sky_inner": 22,
+    "sky_outer": 30,
+    "minimum_fit_fraction": 0.9,
+    "isolation_radius": 12.0,
+    "minimum_snr": 20.0,
+    "reference_snr": 60.0,
+    "max_relative_width_error": 0.1,
+    "max_reduced_chi2": 5.0,
+    "max_annular_residual": 4.0,
+    "minimum_references": 3,
+    "nearest_references": 12,
+    "maximum_reference_distance": 1500.0,
+    "max_local_width_scatter": 0.08,
+    "width_equivalence": 0.2,
+    "confidence_multiplier": 1.0,
+    "max_ellipticity_difference": 0.2,
+    "max_nfev": 180
+  },
+  "input_hashes": {
+    "/Users/doriks-/Library/CloudStorage/OneDrive-ImperialCollegeLondon/lab year 3/Cycle2 Astrophysical imaging processing/neighbour_light_model/results/sources.ecsv": "55bfa6d3877cac58bb301a053d93db13f3a4e49e634d66f1ef67b423478005f8",
+    "/Users/doriks-/Library/CloudStorage/OneDrive-ImperialCollegeLondon/lab year 3/Cycle2 Astrophysical imaging processing/neighbour_light_model/results/detection_products.fits": "01c9b8070c4539bdad9e9ac9b4f43b942937144e57a6e31a6abe9de7a017bbd5",
+    "/Users/doriks-/Library/CloudStorage/OneDrive-ImperialCollegeLondon/lab year 3/Cycle2 Astrophysical imaging processing/Astro/Fits_Data/mosaic.fits": "8575da11936c5c2463c51cff862dfcb0b06f2061dabec8694bb9d6c027ba6db2"
+  },
+  "checked_reference_ids": null,
+  "photometric_sources": 5646,
+  "star_candidates_removed": 109,
+  "remaining_sources": 5537,
+  "reference_sources": 27,
+  "reference_fwhm_median_pix": 4.014200971304588,
+  "classes": {
+    "unknown": 5285,
+    "star_candidate": 109,
+    "extended_candidate": 252
+  },
+  "fit_status": {
+    "ok": 1367,
+    "fit_failed_or_limit": 690,
+    "not_fitted": 3537,
+    "edge": 25,
+    "insufficient_pixels": 27
+  },
+  "classification_reasons": {
+    "poor_free_profile": 10,
+    "not_eligible": 4279,
+    "precise_local_psf_match": 109,
+    "local_profile_mismatch": 35,
+    "no_reliable_local_psf": 24,
+    "inconclusive_keep": 135,
+    "resolved_profile": 252,
+    "crowded_keep": 62,
+    "imprecise_keep": 739,
+    "local_fit_failed": 1
+  },
+  "area_deg2": 0.054861679,
+  "fit_range": [
+    19.0,
+    24.0
+  ],
+  "photometric_uncertainty": {
+    "zeropoint_sigma_mag": 0.02,
+    "effective_gain_assumed": 3.1,
+    "blank_status": {
+      "local_blank": 5646
+    },
+    "median_background_factor": 1.7577885841384355,
+    "median_magnitude_random_error": 0.14105678629307292,
+    "median_magnitude_total_error": 0.14246759968287195,
+    "nonpositive_lower_flux_endpoints": 1,
+    "seed": 20261118
+  },
+  "counts_analysis": {
+    "descriptive_ols_fit": {
+      "slope": 0.44457817363479485,
+      "intercept": -5.698525827096701,
+      "slope_error_propagated": 0.014130497850795
+    },
+    "gls_diagnostic": {
+      "slope": 0.3495072145517395,
+      "intercept": -3.5244224987583124,
+      "slope_error_formal": 0.006141563289984776,
+      "chi2": 155.093669274196,
+      "dof": 9,
+      "retained_covariance_rank": 11,
+      "reduced_chi2": 17.232629919355112
+    },
+    "mc_draws": 2000,
+    "seed": 20261119,
+    "fit_range_fixed": [
+      19.0,
+      24.0
+    ],
+    "error_model": "Poisson min(N_i,N_j) covariance + conditional flux MC covariance with shared MAGZRR offset.",
+    "plot_errors": "Garwood log errors plus first-order photometric log variance in quadrature; approximate combined intervals.",
+    "slope_error_note": "OLS slope is the previous descriptive statistic; its error uses A C A.T with correlated C. It excludes classification/model biases. GLS is saved separately as a straight-line adequacy diagnostic.",
+    "excluded_uncertainties": [
+      "classification",
+      "completeness",
+      "cosmic variance",
+      "effective-gain uncertainty",
+      "area uncertainty"
+    ]
+  },
+  "original_catalogue_columns_preserved": true,
+  "limitations": [
+    "Automatic references are provisional; inspect the reference panels. No external truth labels used.",
+    "Compact galaxies and unresolved nonstellar sources can mimic stars.",
+    "All blended sources and close neighbours are conservatively retained; residual stars remain.",
+    "No reliable local references or low precision means unknown, not confirmed galaxy.",
+    "Width-equivalence cuts and residual gates are heuristic, not calibrated star probabilities.",
+    "Formal errors omit mosaic covariance; header gain as effective gain and electron/s zero point are inherited assumptions.",
+    "Elliptical Moffat is an empirical observed-profile approximation, not a PSF-convolved galaxy model.",
+    "Counts errors include Poisson, conditional flux perturbations and a shared zero point; no classification, completeness or cosmic-variance model.",
+    "Blank apertures account for local background scatter, not a common unknown background bias.",
+    "GLS is a descriptive straight-line fit with approximate correlated errors, not a cosmological inference."
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "variants": {
+    "baseline": {},
+    "lower_peak": {
+      "detection_sigma": 4.0
+    },
+    "lower_growth": {
+      "growth_sigma": 1.5
+    },
+    "smooth_1p5": {
+      "smooth_sigma": 1.5
+    },
+    "smooth_2p0": {
+      "smooth_sigma": 2.0
+    },
+    "smooth_1p5_lower_growth": {
+      "smooth_sigma": 1.5,
+      "growth_sigma": 1.5
+    },
+    "higher_growth_2p5": {
+      "growth_sigma": 2.5
+    },
+    "higher_growth_3p0": {
+      "growth_sigma": 3.0
+    },
+    "smooth_0p7": {
+      "smooth_sigma": 0.7
+    }
+  },
+  "fixed_fit_range": [
+    19,
+    24
+  ],
+  "fixed_mag_step": 0.5,
+  "classification": "local empirical PSF, unchanged settings",
+  "selection_policy": "Report every tested variant; proximity to 0.6 is not a quality metric.",
+  "fit_sensitivity_ranges": [
+    [
+      19,
+      23
+    ],
+    [
+      19,
+      23.5
+    ],
+    [
+      19,
+      24
+    ],
+    [
+      20,
+      23.5
+    ],
+    [
+      20,
+      24
+    ]
+  ],
+  "second_round_rationale": "Initial lower-growth and stronger-smoothing variants reduced usable fractions and local PSF reference coverage. Test higher growth thresholds and weaker smoothing to assess segmentation/contamination losses; retain all results, do not select by closeness to 0.6.",
+  "second_round_variants": [
+    "higher_growth_2p5",
+    "higher_growth_3p0",
+    "smooth_0p7"
+  ]
+}
