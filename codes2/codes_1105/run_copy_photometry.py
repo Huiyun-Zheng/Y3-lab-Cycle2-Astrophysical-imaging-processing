@@ -66,6 +66,7 @@ def recovery_rows(results, trial_id, *, x_offset=0.0, y_offset=0.0):
         'are separate decisions. match_recovery currently requires positive '
         'finite flux for its matched status.'
     )
+    
     return detected
 
 

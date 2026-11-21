@@ -116,10 +116,9 @@ python3 "/Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-l
     --n-source 5 \
     --n-frame 10 \
     --mag-range 25.5 26.0 \
-    --r-eff 5 \
+    --r-eff 3 \
     --seed 42 \
-    --profile 'deVau' \
-    --output 'outputs/completeness_test_1119_deVau/m25.5_26.0'
+    --output 'outputs/completeness_test_1119_2/m25.5_26.0'
 ```
 ```bash
 python3 "/Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/codes2/codes_1105/completeness.py" \
@@ -129,10 +128,9 @@ python3 "/Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-l
     --n-source 5 \
     --n-frame 10 \
     --mag-range 26.0 26.5 \
-    --r-eff 5 \
+    --r-eff 3 \
     --seed 42 \
-    --profile 'deVau' \
-    --output 'outputs/completeness_test_1119_deVau/m26.0_26.5'
+    --output 'outputs/completeness_test_1119_2/m26.0_26.5'
 ```
 
 
