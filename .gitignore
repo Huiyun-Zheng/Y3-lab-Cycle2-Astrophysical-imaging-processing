@@ -21,3 +21,7 @@
 /output/source_detection_neighbour_reviewed/detection_products.fits
 /source_detection_neighbour_refined/results/detection_products.fits
 /source_detection_neighbour_refined/results_before_refinement/detection_products.fits
+
+# Finder metadata and OneDrive-renamed duplicate output directory.
+.DS_Store
+/outputs-Lynn的MacBook Air/
