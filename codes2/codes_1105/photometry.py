@@ -8,7 +8,7 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Ellipse, Patch
 
 def photometry_from_detection(catalogue):
-    """Reuse source_detection_copy measurements in the photometry table format.
+    """Reuse source_detection_final measurements in the photometry table format.
 
     No flux is remeasured and no background is subtracted here. Keep every
     candidate, including NaN fluxes and rejected candidates, for recovery.
@@ -40,7 +40,7 @@ def photometry_from_detection(catalogue):
     results['flux'].description = (
         'Reused background-subtracted aperture flux in input image units'
     )
-    results.meta['method'] = 'Reused source_detection_copy aperture photometry'
+    results.meta['method'] = 'Reused source_detection_final aperture photometry'
     results.meta['flux_column'] = 'aperture_flux_adu'
     results.meta['background_subtracted'] = True
     results.meta['flags'] = (

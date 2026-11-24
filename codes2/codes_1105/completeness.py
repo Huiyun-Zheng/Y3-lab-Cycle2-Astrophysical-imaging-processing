@@ -1,4 +1,4 @@
-"""Inject multiple Sersic + Moffat sources per frame and match recoveries."""
+"""Convolve multiple Sersic sources with a PSF and match their recoveries."""
 
 import argparse
 import json
@@ -10,6 +10,7 @@ from scipy.special import gamma, gammaincinv
 from astropy.modeling.models import Sersic2D
 from astropy.table import Table, vstack
 from astropy.convolution import convolve_fft
+from astropy.io import fits
 
 from get import get_fits_data
 from background import fit_gaussian
@@ -23,23 +24,24 @@ project_dir = Path(__file__).resolve().parent.parent.parent
 
 def galaxy(
         amplitude, r_eff, shape, center, ellipticity, theta,
-        image_shape, moffat_alpha, moffat_beta, half_size=50
+        image_shape, moffat_alpha=None, moffat_beta=None, half_size=50, *, psf_kernel=None
         ):
     """
-    Create simulated galaxy profile by convolving an intrinsic Sersic profile with the Moffat psf.
+    Convolve an intrinsic Sersic profile with a supplied PSF or a single Moffat.
     
     Args:
-    ampltidue: float, intensity at effective radius
-    r_eff: float, size of galaxy
-    shape: str, choose from "gaussian", "exponential", "deVau"
-    center: 2d tuple
-    ellipticity: float, 1- b/a, in range [0, 1]
-    theta: float, rotation angle
-    image_shape: 2d tuple, same as backrgound shape
+        ampltidue: float, intensity at effective radius
+        r_eff: float, size of galaxy
+        shape: str, choose from "gaussian", "exponential", "deVau"
+        center: 2d tuple
+        ellipticity: float, 1- b/a, in range [0, 1]
+        theta: float, rotation angle
+        image_shape: 2d tuple, same as background shape
+        psf_kernel: optional odd-sized array centred on its middle pixel
 
     Returns:
-    observed_source: observed galaxy profile
-    flux_in: input flux (for magnitude calculation)
+        observed_source: observed galaxy profile
+        flux_in: input flux (for magnitude calculation)
     """
 
     if shape == 'gaussian':
@@ -56,11 +58,29 @@ def galaxy(
     if r_eff <= 0 or not 0 <= ellipticity < 1:
         raise ValueError("Require r_eff > 0 and 0 <= ellipticity < 1")
 
-    if moffat_alpha <= 0 or moffat_beta <= 1:
-        raise ValueError("Require moffat_alpha > 0 and moffat_beta > 1")
+    if psf_kernel is None:
+        if (moffat_alpha is None or moffat_beta is None
+                or not np.isfinite(moffat_alpha) or not np.isfinite(moffat_beta)
+                or moffat_alpha <= 0 or moffat_beta <= 1):
+            raise ValueError("Require moffat_alpha > 0 and moffat_beta > 1")
 
-    if not isinstance(half_size, (int, np.integer)) or half_size < 0:
-        raise ValueError("half_size must be a nonnegative integer")
+        if not isinstance(half_size, (int, np.integer)) or half_size < 0:
+            raise ValueError("half_size must be a nonnegative integer")
+
+        yy, xx = np.mgrid[-half_size:half_size + 1, -half_size:half_size + 1]
+        r_squared = xx**2 + yy**2
+        psf = (
+            (moffat_beta - 1) / (np.pi * moffat_alpha**2)
+            * (1 + r_squared / moffat_alpha**2)**(-moffat_beta)
+        )
+    else:
+        psf = np.asarray(psf_kernel, dtype=float)
+        if psf.ndim != 2 or any(length % 2 == 0 for length in psf.shape):
+            raise ValueError("PSF kernel must be a 2D array with odd dimensions")
+        if not np.all(np.isfinite(psf)) or np.any(psf < 0) or psf.sum() <= 0:
+            raise ValueError("PSF kernel must be finite, nonnegative and have positive flux")
+
+    pad_y, pad_x = (length // 2 for length in psf.shape)
 
     height, width = image_shape
     x_center, y_center = center
@@ -78,18 +98,10 @@ def galaxy(
 
     # Include light that can scatter into the output image
     yy_image, xx_image = np.mgrid[
-        -half_size:height + half_size,
-        -half_size:width + half_size
+        -pad_y:height + pad_y,
+        -pad_x:width + pad_x
     ]
     intrinsic_source = intrinsic_model(xx_image, yy_image)
-
-    # PSF coordinates
-    yy, xx = np.mgrid[-half_size:half_size + 1, -half_size:half_size + 1]
-    r_squared = xx**2 + yy**2
-    psf = (
-        (moffat_beta - 1) / (np.pi * moffat_alpha**2)
-        * (1 + r_squared / moffat_alpha**2)**(-moffat_beta)
-    )
 
     # Convolve
     observed_source = convolve_fft(
@@ -113,8 +125,8 @@ def galaxy(
 
     # Return the requested image region
     return observed_source[
-        half_size:half_size + height,
-        half_size:half_size + width
+        pad_y:pad_y + height,
+        pad_x:pad_x + width
     ], float(flux_in)
 
 
@@ -244,8 +256,8 @@ def run_experiment(
     Return injected, detected, original_detected, matches; save all four.
 
     Args:
-    x_range, y_range: for cropping the image for real backrgound
-    amplitude_range, r_eff_range: for random number generator, if None, using aplitude and r_eff
+        x_range, y_range: for cropping the image for real backrgound
+        amplitude_range, r_eff_range: for random number generator, if None, using aplitude and r_eff
     """
 
     two_groups = n_bright is not None or n_faint is not None
@@ -306,9 +318,18 @@ def run_experiment(
     background_rng = np.random.default_rng(seed + 1)
     poisson_rng = np.random.default_rng(seed + 2)
     header, data = get_fits_data(file_path=Path(fits_path))
-    psf_results = Table.read(psf_result_path)
-    alpha = float(psf_results['alpha'][0])
-    beta = float(psf_results['beta'][0])
+    psf_path = Path(psf_result_path)
+    psf_metadata = {'psf_file': str(psf_path.resolve())}
+    alpha = beta = psf_kernel = None
+    if psf_path.suffix.lower() in ('.fits', '.fit', '.fts'):
+        psf_kernel = fits.getdata(psf_path)
+        psf_metadata.update(psf_model='FITS kernel', psf_shape=list(psf_kernel.shape))
+    else:
+        psf_results = Table.read(psf_path)
+        alpha = float(psf_results['alpha'][0])
+        beta = float(psf_results['beta'][0])
+        psf_metadata.update(psf_model='Single Moffat', psf_alpha=alpha, psf_beta=beta)
+    print('PSF:', psf_path)
     n = {'gaussian': 0.5, 'exponential': 1., 'deVau': 4.}[profile]
     b_n = gammaincinv(2 * n, 0.5)
 
@@ -395,7 +416,7 @@ def run_experiment(
                 source_amplitude = target_flux / unit_flux
             source, input_flux = galaxy(
                 source_amplitude, source_size, profile, (x, y), ellipticity,
-                angle, image_shape, alpha, beta, half_size
+                angle, image_shape, alpha, beta, half_size, psf_kernel=psf_kernel
             )
             flux_on_image = float(source.sum())
             added_source = source
@@ -459,7 +480,7 @@ def run_experiment(
 
     injected = Table(rows=injected_rows)
     injected['theta'].unit = 'rad'
-    injected.meta['model'] = 'Intrinsic Sersic convolved with normalized Moffat PSF'
+    injected.meta['model'] = 'Intrinsic Sersic convolved with normalized PSF'
     injected.meta['seed'] = int(seed)
     injected.meta['background_seed'] = int(seed + 1)
     injected.meta['source_noise_seed'] = int(seed + 2)
@@ -472,8 +493,7 @@ def run_experiment(
     } if two_groups else {'single': {'n_per_frame': int(n_sources), 'mag_range': mag_range}})
     injected.meta['groups'] = group_settings
     injected.meta['group_size_default'] = {'r_eff': r_eff, 'r_eff_range': r_eff_range}
-    injected.meta['psf_alpha'] = alpha
-    injected.meta['psf_beta'] = beta
+    injected.meta.update(psf_metadata)
     injected.meta['placement'] = 'Uniform random centres; min_separation is optional'
     injected.meta['sampling_note'] = (
         'Pixel-centre sampling retained; especially n=4 requires sampling checks. '
@@ -545,6 +565,7 @@ def run_experiment(
              for name in group_summary.colnames} for row in group_summary
         ],
         'background_type': background_type, 'profile': profile,
+        'psf': psf_metadata,
         'min_separation_pixels': min_separation,
         'edge_margin_pixels': edge_margin,
         'status_counts': {str(s): int(c) for s, c in zip(states, counts)},
@@ -572,9 +593,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fits', type=Path,
                         default=project_dir / 'Astro' / 'Fits_Data' / 'mosaic.fits')
-    parser.add_argument('--psf', type=Path,
-                        default=Path(__file__).resolve().parent / 'outputs'
-                        / 'psf_fit' / 'moffat_parameters.ecsv')
+    psf_dir = Path(__file__).resolve().parent / 'outputs' / 'psf_fit'
+    default_psf = psf_dir / 'combined_psf.fits'
+    if not default_psf.exists():
+        default_psf = psf_dir / 'moffat_parameters.ecsv'
+    parser.add_argument('--psf', type=Path, default=default_psf,
+                        help='PSF kernel FITS or legacy Moffat parameter ECSV')
     parser.add_argument('--output', type=Path,
                         default=Path(__file__).resolve().parent / 'outputs' / 'completeness_multiple')
     parser.add_argument('--n-sources', '--sources-per-frame', dest='n_sources',
@@ -612,7 +636,8 @@ def main():
     parser.add_argument('--edge-margin', type=float, default=25)
     parser.add_argument('--min-separation', type=float, default=0,
                         help='Optional minimum separation between injected centres')
-    parser.add_argument('--half-size', type=int, default=50)
+    parser.add_argument('--half-size', type=int, default=50,
+                        help='Kernel radius for an ECSV Moffat PSF (default: 50)')
     parser.add_argument('--match-radius', type=float, default=3)
     parser.add_argument('--source-poisson', action='store_true')
     parser.add_argument('--show', action='store_true')

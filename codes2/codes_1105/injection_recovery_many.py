@@ -19,8 +19,7 @@ import matplotlib.pyplot as plt
 
 from injection import elliptical_gaussian
 from match_many_recovery import match_recovery
-from run_copy_photometry import recovery_rows, run_pipeline
-from source_detection_copy import Settings
+from run_copy_photometry import Settings, recovery_rows, run_pipeline
 
 
 def make_grid(shape, spacing, margin):
@@ -103,7 +102,7 @@ def run_experiment(
 
     Raw mode accepts a 2D image; each cutout is detected before and after
     injection. Sim mode accepts (images, truths, results); existing results
-    are ignored and each supplied image is detected by the copy pipeline.
+    are ignored and each supplied image is detected by the final pipeline.
     Both modes share matching, quality columns and saved output tables.
     Raw placements keep 5*sigma_major inside the baseline valid detection
     area and separate centres by >=3*(sigma_major_i+sigma_major_j).
@@ -334,7 +333,7 @@ def run_experiment(
         'conservative_flux_match_fraction': n_clean / len(injected) if len(injected) else None,
         'clean_usable_recoveries': int(matches['clean_usable_recovery'].sum()),
         'scope': ('Cutout pipeline with sparse, mask-avoiding Gaussian injections'
-                  if bg_type == 'raw' else 'Copy pipeline on supplied simulated images; overlap allowed'),
+                  if bg_type == 'raw' else 'Final pipeline on supplied simulated images; overlap allowed'),
         'note': 'matched includes proximity and positive finite flux requirements; '
                 'this fraction is not pure detection completeness.',
     }

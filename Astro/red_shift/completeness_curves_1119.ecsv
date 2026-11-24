@@ -1,0 +1,92 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: profile, datatype: string}
+# - {name: r_eff_px, unit: pix, datatype: float64}
+# - {name: mag_min, unit: mag, datatype: float64}
+# - {name: mag_max, unit: mag, datatype: float64}
+# - {name: mag_mid, unit: mag, datatype: float64, description: Centre of the injected apparent magnitude bin}
+# - {name: n_injected, datatype: int64}
+# - {name: n_unique_position_match, datatype: int64, description: Mutually unique position matches before excluding nearby original sources}
+# - {name: n_detection_recovered, datatype: int64}
+# - {name: n_photometry_recovered, datatype: int64}
+# - {name: detection_fraction, datatype: float64, description: Detection recoveries divided by all injections in the bin}
+# - {name: photometry_fraction, datatype: float64, description: Usable photometry recoveries divided by all injections in the bin}
+# - {name: source_matches, datatype: string, description: Path to the original matching table relative to the repository root}
+# meta: !!omap
+# - {region: Region B on the original mosaic}
+# - x_slice: [640, 1056]
+# - y_slice: [4032, 4448]
+# - {seed: 42}
+# - {n_frames: 10}
+# - {injections_per_frame: 5}
+# - {match_radius_pixels: 3.0}
+# - {detection_selection: Mutually unique centroid match with no nearby original detection}
+# - {photometry_selection: 'Detection selection and usable, finite, positive output flux'}
+# schema: astropy-2.0
+profile r_eff_px mag_min mag_max mag_mid n_injected n_unique_position_match n_detection_recovered n_photometry_recovered detection_fraction photometry_fraction source_matches
+exponential 3.0 15.5 16.0 15.75 50 50 35 3 0.7 0.06 outputs/completeness_test_1119_2/m15.5_16.0/matches.ecsv
+exponential 3.0 16.0 16.5 16.25 50 50 35 5 0.7 0.1 outputs/completeness_test_1119_2/m16.0_16.5/matches.ecsv
+exponential 3.0 16.5 17.0 16.75 50 50 35 9 0.7 0.18 outputs/completeness_test_1119_2/m16.5_17.0/matches.ecsv
+exponential 3.0 17.0 17.5 17.25 50 50 35 14 0.7 0.28 outputs/completeness_test_1119_2/m17.0_17.5/matches.ecsv
+exponential 3.0 17.5 18.0 17.75 50 50 35 13 0.7 0.26 outputs/completeness_test_1119_2/m17.5_18.0/matches.ecsv
+exponential 3.0 18.0 18.5 18.25 50 50 35 16 0.7 0.32 outputs/completeness_test_1119_2/m18.0_18.5/matches.ecsv
+exponential 3.0 18.5 19.0 18.75 50 50 35 20 0.7 0.4 outputs/completeness_test_1119_2/m18.5_19.0/matches.ecsv
+exponential 3.0 19.0 19.5 19.25 50 50 35 23 0.7 0.46 outputs/completeness_test_1119_2/m19.0_19.5/matches.ecsv
+exponential 3.0 19.5 20.0 19.75 50 50 35 26 0.7 0.52 outputs/completeness_test_1119_2/m19.5_20.0/matches.ecsv
+exponential 3.0 20.0 20.5 20.25 50 50 35 26 0.7 0.52 outputs/completeness_test_1119_2/m20.0_20.5/matches.ecsv
+exponential 3.0 20.5 21.0 20.75 50 50 35 25 0.7 0.5 outputs/completeness_test_1119_2/m20.5_21.0/matches.ecsv
+exponential 3.0 21.0 21.5 21.25 50 50 35 26 0.7 0.52 outputs/completeness_test_1119_2/m21.0_21.5/matches.ecsv
+exponential 3.0 21.5 22.0 21.75 50 48 35 26 0.7 0.52 outputs/completeness_test_1119_2/m21.5_22.0/matches.ecsv
+exponential 3.0 22.0 22.5 22.25 50 48 35 26 0.7 0.52 outputs/completeness_test_1119_2/m22.0_22.5/matches.ecsv
+exponential 3.0 22.5 23.0 22.75 50 45 35 29 0.7 0.58 outputs/completeness_test_1119_2/m22.5_23.0/matches.ecsv
+exponential 3.0 23.0 23.5 23.25 50 38 31 28 0.62 0.56 outputs/completeness_test_1119_2/m23.0_23.5/matches.ecsv
+exponential 3.0 23.5 24.0 23.75 50 13 12 11 0.24 0.22 outputs/completeness_test_1119_2/m23.5_24.0/matches.ecsv
+exponential 3.0 24.0 24.5 24.25 50 2 2 2 0.04 0.04 outputs/completeness_test_1119_2/m24.0_24.5/matches.ecsv
+exponential 3.0 24.5 25.0 24.75 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_2/m24.5_25.0/matches.ecsv
+exponential 3.0 25.0 25.5 25.25 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_2/m25.0_25.5/matches.ecsv
+exponential 3.0 25.5 26.0 25.75 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_2/m25.5_26.0/matches.ecsv
+exponential 3.0 26.0 26.5 26.25 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_2/m26.0_26.5/matches.ecsv
+exponential 5.0 15.5 16.0 15.75 50 50 30 2 0.6 0.04 outputs/completeness_test_1119_1/m15.5_16.0/matches.ecsv
+exponential 5.0 16.0 16.5 16.25 50 50 30 3 0.6 0.06 outputs/completeness_test_1119_1/m16.0_16.5/matches.ecsv
+exponential 5.0 16.5 17.0 16.75 50 50 30 4 0.6 0.08 outputs/completeness_test_1119_1/m16.5_17.0/matches.ecsv
+exponential 5.0 17.0 17.5 17.25 50 50 30 9 0.6 0.18 codes2/codes_1105/outputs/completeness_test_1119_1/m17.0_17.5/matches.ecsv
+exponential 5.0 17.5 18.0 17.75 50 50 30 12 0.6 0.24 outputs/completeness_test_1119_1/m17.5_18.0/matches.ecsv
+exponential 5.0 18.0 18.5 18.25 50 50 30 10 0.6 0.2 outputs/completeness_test_1119_1/m18.0_18.5/matches.ecsv
+exponential 5.0 18.5 19.0 18.75 50 50 30 13 0.6 0.26 outputs/completeness_test_1119_1/m18.5_19.0/matches.ecsv
+exponential 5.0 19.0 19.5 19.25 50 50 30 17 0.6 0.34 outputs/completeness_test_1119_1/m19.0_19.5/matches.ecsv
+exponential 5.0 19.5 20.0 19.75 50 50 30 19 0.6 0.38 codes2/codes_1105/outputs/completeness_test_1119_1/m19.5_20.0/matches.ecsv
+exponential 5.0 20.0 20.5 20.25 50 50 30 23 0.6 0.46 outputs/completeness_test_1119_1/m20.0_20.5/matches.ecsv
+exponential 5.0 20.5 21.0 20.75 50 49 30 23 0.6 0.46 outputs/completeness_test_1119_1/m20.5_21.0/matches.ecsv
+exponential 5.0 21.0 21.5 21.25 50 47 30 25 0.6 0.5 outputs/completeness_test_1119_1/m21.0_21.5/matches.ecsv
+exponential 5.0 21.5 22.0 21.75 50 47 30 24 0.6 0.48 codes2/codes_1105/outputs/completeness_test_1119_1/m21.5_22.0/matches.ecsv
+exponential 5.0 22.0 22.5 22.25 50 46 30 24 0.6 0.48 outputs/completeness_test_1119_1/m22.0_22.5/matches.ecsv
+exponential 5.0 22.5 23.0 22.75 50 36 27 24 0.54 0.48 outputs/completeness_test_1119_1/m22.5_23.0/matches.ecsv
+exponential 5.0 23.0 23.5 23.25 50 12 11 10 0.22 0.2 outputs/completeness_test_1119_1/m23.0_23.5/matches.ecsv
+exponential 5.0 23.5 24.0 23.75 50 2 2 2 0.04 0.04 outputs/completeness_test_1119_1/m23.5_24.0/matches.ecsv
+exponential 5.0 24.0 24.5 24.25 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_1/m24.0_24.5/matches.ecsv
+exponential 5.0 24.5 25.0 24.75 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_1/m24.5_25.0/matches.ecsv
+exponential 5.0 25.0 25.5 25.25 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_1/m25.0_25.5/matches.ecsv
+exponential 5.0 25.5 26.0 25.75 50 1 1 1 0.02 0.02 outputs/completeness_test_1119_1/m25.5_26.0/matches.ecsv
+deVau 5.0 15.5 16.0 15.75 50 43 12 0 0.24 0.0 outputs/completeness_test_1119_deVau/m15.5_16.0/matches.ecsv
+deVau 5.0 16.0 16.5 16.25 50 50 13 0 0.26 0.0 outputs/completeness_test_1119_deVau/m16.0_16.5/matches.ecsv
+deVau 5.0 16.5 17.0 16.75 50 50 13 0 0.26 0.0 outputs/completeness_test_1119_deVau/m16.5_17.0/matches.ecsv
+deVau 5.0 17.0 17.5 17.25 50 50 13 0 0.26 0.0 outputs/completeness_test_1119_deVau/m17.0_17.5/matches.ecsv
+deVau 5.0 17.5 18.0 17.75 50 50 13 1 0.26 0.02 outputs/completeness_test_1119_deVau/m17.5_18.0/matches.ecsv
+deVau 5.0 18.0 18.5 18.25 50 50 13 2 0.26 0.04 outputs/completeness_test_1119_deVau/m18.0_18.5/matches.ecsv
+deVau 5.0 18.5 19.0 18.75 50 50 13 7 0.26 0.14 outputs/completeness_test_1119_deVau/m18.5_19.0/matches.ecsv
+deVau 5.0 19.0 19.5 19.25 50 50 13 8 0.26 0.16 outputs/completeness_test_1119_deVau/m19.0_19.5/matches.ecsv
+deVau 5.0 19.5 20.0 19.75 50 50 13 10 0.26 0.2 outputs/completeness_test_1119_deVau/m19.5_20.0/matches.ecsv
+deVau 5.0 20.0 20.5 20.25 50 50 13 11 0.26 0.22 outputs/completeness_test_1119_deVau/m20.0_20.5/matches.ecsv
+deVau 5.0 20.5 21.0 20.75 50 50 13 13 0.26 0.26 outputs/completeness_test_1119_deVau/m20.5_21.0/matches.ecsv
+deVau 5.0 21.0 21.5 21.25 50 46 13 13 0.26 0.26 outputs/completeness_test_1119_deVau/m21.0_21.5/matches.ecsv
+deVau 5.0 21.5 22.0 21.75 50 47 13 13 0.26 0.26 outputs/completeness_test_1119_deVau/m21.5_22.0/matches.ecsv
+deVau 5.0 22.0 22.5 22.25 50 45 13 13 0.26 0.26 outputs/completeness_test_1119_deVau/m22.0_22.5/matches.ecsv
+deVau 5.0 22.5 23.0 22.75 50 42 12 12 0.24 0.24 outputs/completeness_test_1119_deVau/m22.5_23.0/matches.ecsv
+deVau 5.0 23.0 23.5 23.25 50 18 3 3 0.06 0.06 outputs/completeness_test_1119_deVau/m23.0_23.5/matches.ecsv
+deVau 5.0 23.5 24.0 23.75 50 5 0 0 0.0 0.0 outputs/completeness_test_1119_deVau/m23.5_24.0/matches.ecsv
+deVau 5.0 24.0 24.5 24.25 50 2 0 0 0.0 0.0 outputs/completeness_test_1119_deVau/m24.0_24.5/matches.ecsv
+deVau 5.0 24.5 25.0 24.75 50 1 0 0 0.0 0.0 outputs/completeness_test_1119_deVau/m24.5_25.0/matches.ecsv
+deVau 5.0 25.0 25.5 25.25 50 1 0 0 0.0 0.0 outputs/completeness_test_1119_deVau/m25.0_25.5/matches.ecsv
+deVau 5.0 25.5 26.0 25.75 50 1 0 0 0.0 0.0 outputs/completeness_test_1119_deVau/m25.5_26.0/matches.ecsv
+deVau 5.0 26.0 26.5 26.25 50 1 0 0 0.0 0.0 outputs/completeness_test_1119_deVau/m26.0_26.5/matches.ecsv

@@ -17,11 +17,10 @@ from astropy.table import Table
 
 from euclidean_mc import simulate_euclidean_abs
 from injection_recovery_many import elliptical_gaussian
-from match_many_recovery import match_many_recovery
+from match_many_recovery import match_recovery
 from photometry import fixed_aperture_photometry
-from run_copy_photometry import run_pipeline
+from run_copy_photometry import Settings, run_pipeline
 from source_detection import detect_sources, deblend
-from source_detection_copy import Settings
 
 
 def compare_recovery(truth, results):
@@ -35,9 +34,7 @@ def compare_recovery(truth, results):
     detected['flux_out'] = results['flux']
     finite = np.isfinite(detected['x_local']) & np.isfinite(detected['y_local'])
     detected = detected[finite]
-    original = Table(names=('frame_id', 'x_local', 'y_local'),
-                     dtype=('i8', 'f8', 'f8'))
-    matches = match_many_recovery(truth, detected, original, match_radius=3)
+    matches = match_recovery(truth, detected, None, match_radius=3, bg_type='sim')
     unique = (matches['n_candidates'] == 1) & (matches['n_claimants'] == 1)
     selected = np.zeros(len(matches), dtype=bool)
     for i in np.flatnonzero(unique):
@@ -65,8 +62,8 @@ def main():
     parser.add_argument('--n-sources', type=int, default=1000)
     parser.add_argument('--size', type=int, default=2048)
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--pipeline', choices=('original', 'copy', 'both'), default='both',
-                        help='Which pipeline to run (default: both)')
+    parser.add_argument('--pipeline', choices=('original', 'final', 'copy', 'both'), default='both',
+                        help='Which pipeline to run (copy is an alias for final)')
     parser.add_argument('--placement', choices=('grid', 'random'), default='grid',
                         help='Grid cells or independent random positions (default: grid)')
     parser.add_argument('--spacing', type=float, default=50,
@@ -160,13 +157,12 @@ def main():
             'deblend': 'current source_detection.deblend wrapper',
         }
 
-    if args.pipeline in ('copy', 'both'):
-        # Copy uses its own background, masks and photometry.
-        print('Running source_detection_copy...', flush=True)
+    if args.pipeline in ('final', 'copy', 'both'):
+        print('Running source_detection_final...', flush=True)
         settings = Settings()
-        copy_results, _, _ = run_pipeline(sim_image, output / 'copy', settings, header=header)
-        all_results['source_detection_copy'] = copy_results
-        pipeline_settings['source_detection_copy'] = asdict(settings)
+        final_results, _, _ = run_pipeline(sim_image, output / 'final', settings, header=header)
+        all_results['source_detection_final'] = final_results
+        pipeline_settings['source_detection_final'] = asdict(settings)
     recoveries = {}
     for name, results in all_results.items():
         valid = ((results['flag'] == 0) & np.isfinite(results['flux'])
@@ -212,7 +208,7 @@ def main():
                  'k-', label='Input catalogue')
     axes[0].plot(thresholds, np.log10(args.n_sources) + 0.6 * (thresholds - 25),
                  'k:', label='Ideal expectation: slope 0.6')
-    colors = {'source_detection': 'tab:blue', 'source_detection_copy': 'tab:orange'}
+    colors = {'source_detection': 'tab:blue', 'source_detection_final': 'tab:orange'}
     for name, results in all_results.items():
         color = colors[name]
         counts = np.array([(results['m_out'] < m).sum() for m in thresholds])

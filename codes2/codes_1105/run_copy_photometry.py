@@ -1,7 +1,7 @@
-"""Connect source_detection_copy to existing photometry and recovery tables.
+"""Connect the repository's source_detection_final to existing photometry and recovery tables.
 
 Example:
-    python run_copy_photometry.py --fits /path/to/mosaic.fits --output outputs/copy
+    python run_copy_photometry.py --fits /path/to/mosaic.fits --output outputs/final
 
 The existing AB_calibration formula is used unchanged. Its reported error
 contains only the zero-point uncertainty, not the flux uncertainty.
@@ -15,10 +15,11 @@ from astropy.io import fits
 from astropy.table import Table
 import matplotlib.pyplot as plt
 
-from source_detection_copy import run_detection
 from photometry import (
     AB_calibration, photometry_from_detection, plot_aperture_catalogue,
 )
+
+from detection_final_adapter import Settings, run_detection
 
 
 def run_pipeline(data, output_dir, settings=None, *, header=None):

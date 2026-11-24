@@ -16,7 +16,7 @@ output_dir.mkdir(parents=True, exist_ok=True)
 
 # Use the previously downloaded red-shift catalogue
 use_saved_catalogue = True # file already exist in project directory, do not change the bool
-catalogue_path = project_dir / "Astro" / "red_shift" / "catalogue_subset.ecsv"
+catalogue_path = project_dir / "Astro" / "red_shift" / "red_shift_catalogue.csv"
 
 # Observation information
 header = fits.getheader(fits_path)
@@ -37,13 +37,8 @@ print(f"Centre Dec: {center.dec.deg:.6f} deg")
 
 # Load (downloaded) or query (download from internet) the catalogue
 if use_saved_catalogue:
-    catalogue = Table.read(catalogue_path)
-
-    catalogue.rename_column("ra", "RAJ2000") # right ascension, reference epoch J2000
-    catalogue.rename_column("dec", "DEJ2000") # declination, reference epoch J2000
-    catalogue.rename_column("z_spec", "zsp") # spectroscopic redshift
-
-    print("Using the saved subset; the original query reached its row limit.")
+    catalogue = Table.read(catalogue_path, format="ascii.csv")
+    print(f"Using the saved catalogue: {catalogue_path.name}")
 
 else:
     from astroquery.vizier import Vizier
@@ -105,6 +100,9 @@ results["x_pixel"] = x[inside]
 results["y_pixel"] = y[inside]
 results["mst"] = catalogue["mst"]
 results["z_spec"] = catalogue["zsp"]
+if "BMAG" in catalogue.colnames:
+    results["BMAG"] = catalogue["BMAG"]
+    results["z_phot"] = catalogue["zph2"]
 
 # Calculate distances and times by red shift
 z = np.asarray(results["z_spec"], dtype=float)

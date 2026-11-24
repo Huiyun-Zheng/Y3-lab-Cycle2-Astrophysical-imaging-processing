@@ -1,6 +1,6 @@
 # Euclidean Detection Comparison
 
-`source_detection_copy` with the same input simulated sources.
+Compare `source_detection` and the repository's `source_detection_final.py` on the same simulated sources.
 
 ## Run
 
@@ -19,8 +19,8 @@ python3 compare_euclidean_detection.py --fits "/path/to/mosaic.fits" --output "o
 - Original pipeline only
 python3 compare_euclidean_detection.py --pipeline original
 
-- Copy pipeline only
-python3 compare_euclidean_detection.py --pipeline copy
+- Final pipeline only (`--pipeline copy` is still accepted)
+python3 compare_euclidean_detection.py --pipeline final
 
 - Both pipelines (default)
 python3 compare_euclidean_detection.py --pipeline both
@@ -40,7 +40,7 @@ The default output directory is `outputs/euclidean_comparison/`.
 
 - `injected.ecsv`: input source positions, magnitudes, fluxes and sizes.
 - `simulated_image.fits`: the image supplied to both pipelines.
-- `source_detection.ecsv` and `source_detection_copy.ecsv`: measured catalogues.
+- `source_detection.ecsv` and `source_detection_final.ecsv`: measured catalogues.
 - `*_recovery.ecsv`: matching results using a 3-pixel radius.
 - `aperture_comparison.png`: aperture overlays for both methods.
 - `counts_and_recovery.png` and `.pdf`: cumulative magnitude counts and recovery fractions.
@@ -53,7 +53,7 @@ Positional recovery and usable photometry are recorded separately. This is an id
 # Injection–Recovery Experiment
 
 Inject Gaussian sources and assess their recovery using the
-`source_detection_copy` pipeline.
+repository's `source_detection_final.py` pipeline.
 
 ## Run
 

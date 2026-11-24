@@ -11,9 +11,8 @@ from source_detection import detect_sources, deblend, crop_array
 from photometry import fixed_aperture_photometry, plot_aperture_catalogue
 from injection import elliptical_gaussian
 from match_recovery import match_recovery
-from run_copy_photometry import run_pipeline, recovery_rows
+from run_copy_photometry import recovery_rows, run_detection, run_pipeline
 from photometry import plot_aperture_catalogue, AB_calibration
-from source_detection_copy import run_detection
 
 seed = 42
 rng = np.random.default_rng(seed)
@@ -37,7 +36,9 @@ def make_grid(shape, spacing, margin):
     return np.column_stack((xx.ravel(), yy.ravel()))
 
 # Run the pipeline for completeness tests
-catalogue, excluded, processed = run_detection(data, project_dir / "Astro" / "codes2" / "codes_1105"/'outputs')
+catalogue, excluded, processed = run_detection(
+    fits_path, project_dir / "Astro" / "codes2" / "codes_1105" / "outputs"
+)
 
 spacing = 200
 margin = 200
