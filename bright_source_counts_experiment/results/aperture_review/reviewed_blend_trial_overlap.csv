@@ -1,0 +1,2 @@
+source_id_1,source_id_2,shared_pixels,significant_pixels,shared_flux_adu,shared_snr,fraction_1,fraction_2,pair_rejected
+4,776,62,62,8325.576171875,98.11994171142578,0.00613727652552829,0.5017640097285384,True

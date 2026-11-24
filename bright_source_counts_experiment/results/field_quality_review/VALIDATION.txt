@@ -1,0 +1,8 @@
+PASS: synthetic single, elongated, strong-double and weak-secondary controls.
+PASS: baseline snapshot and protected original files unchanged.
+PASS: fixed candidate positions, segmentation IDs, apertures and original finite fluxes.
+PASS: all 16 recoveries satisfy mask, model, S/N and neighbour checks.
+PASS: 9 new multi-peak exclusions; no rejected shared pair has both members usable.
+PASS: photometry selects exactly the 5676 usable sources, 5607 remaining after star selection.
+Retained review queue: 233; these warnings do not remove objects from counts.
+Products SHA256: d7d38ad0ff5b23993b44004d324afdcebda864491709643b8c1cc8fe17427955

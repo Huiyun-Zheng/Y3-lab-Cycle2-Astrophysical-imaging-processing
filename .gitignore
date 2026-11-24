@@ -1,2 +1,27 @@
 # Generated image products exceed GitHub's normal file-size limit.
 /output/source_detection_auto/detection_products.fits
+
+# Large local analysis products; keep on disk, do not upload.
+/bright_source_counts_experiment/inputs/detection_products.fits
+/bright_source_counts_experiment/results/aperture_review/detection_products.fits
+/bright_source_counts_experiment/results/mask_only_control/detection_products.fits
+/bright_source_counts_experiment/results/masked_review/detection_products.fits
+/detection_parameter_experiment/variants/baseline/detections/detection_products.fits
+/detection_parameter_experiment/variants/higher_growth_2p5/detections/detection_products.fits
+/detection_parameter_experiment/variants/higher_growth_3p0/detections/detection_products.fits
+/detection_parameter_experiment/variants/lower_growth/detections/detection_products.fits
+/detection_parameter_experiment/variants/lower_peak/detections/detection_products.fits
+/detection_parameter_experiment/variants/smooth_0p7/detections/detection_products.fits
+/detection_parameter_experiment/variants/smooth_1p5/detections/detection_products.fits
+/detection_parameter_experiment/variants/smooth_1p5_lower_growth/detections/detection_products.fits
+/detection_parameter_experiment/variants/smooth_2p0/detections/detection_products.fits
+/field_quality_complete/results/aperture_review/detection_products.fits
+/neighbour_light_model/before_mask_blend_review.zip
+/neighbour_light_model/results/detection_products.fits
+/output/source_detection_neighbour_reviewed/detection_products.fits
+/source_detection_neighbour_refined/results/detection_products.fits
+/source_detection_neighbour_refined/results_before_refinement/detection_products.fits
+
+# Finder metadata and OneDrive-renamed duplicate output directory.
+.DS_Store
+/outputs-Lynn的MacBook Air/

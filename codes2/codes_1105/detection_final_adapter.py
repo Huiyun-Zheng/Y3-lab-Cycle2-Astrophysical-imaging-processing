@@ -11,9 +11,11 @@ import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 
-# Use the detector at the repository root regardless of the working directory.
+# Import the baseline detector from its repository path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from source_detection_final import Settings, run_detection as run_final_detection
+from detection_parameter_experiment.variants.baseline.source_detection_final import (
+    Settings, run_detection as run_final_detection,
+)
 
 
 def run_detection(data, output_dir, settings=None, *, header=None):

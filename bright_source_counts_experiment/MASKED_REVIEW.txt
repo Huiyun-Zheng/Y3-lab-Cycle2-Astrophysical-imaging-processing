@@ -1,0 +1,72 @@
+Masked detection review
+=======================
+
+Run run_masked_review.py with the astro-image Python environment.
+This reruns detection, neighbour assessment, circular Moffat classification,
+photometric uncertainties and cumulative counts in that order.
+
+All outputs go to results/masked_review and are replaced on the next run.
+No original project folder or earlier experiment result is overwritten.
+Use --analysis-only only when deliberately reusing this review's saved sources
+and detection_products.fits. Source IDs are rematched by sky-image position
+because changing detection changes the segmentation labels.
+
+Changes from the balanced-recovery experiment:
+
+1. Mask all columns x >= 2450 (zero-based coordinates). This follows the visible
+   damaged strip, not the count slope. The usual detection margin is also added.
+2. Mask high-significance cores that are much narrower than the measured PSF:
+   peak/raw RMS >= 15, minor core sigma < 0.65 pixels, and either axis ratio > 2.5
+   or major core sigma < 0.5 pixels. Core pixels exceed 30% of the peak. Grow the
+   connected 3-sigma region by two pixels. Do not interpolate artificial flux.
+   These are suspected sharp artefacts, not a physical identification of cosmic
+   rays. This filter does not find every cosmic ray or every instrumental defect.
+3. Raise the smoothed detection-peak threshold from 5 to 7 sigma. Raise the final
+   formal aperture S/N threshold from 5 to 8. Keep growth_sigma at 2.5 so the
+   footprint of a retained object is not deliberately shrunk to its bright core.
+4. Raise fractional secondary-peak prominence from 0.10 to 0.20 to reduce
+   subdivision of bright profiles. This can also merge close real companions;
+   inspect the diagnostic apertures in crowded fields.
+5. Raise the aperture semi-major-axis cap from 35 to 60 pixels. This is a maximum,
+   not a fixed aperture size. Each size still follows the measured source moments.
+6. Allow fractional Moffat residuals up to 0.15 instead of 0.08 for bright galaxy
+   profiles. Keep balanced-model contamination limits (area 0.15, flux 0.10),
+   neighbour-bound contribution 0.02 and residual-sky fraction 0.05. A galaxy
+   need not have a perfect stellar Moffat profile. This tolerance is provisional,
+   not a calibrated 15% flux uncertainty or evidence that a neighbour fit is exact.
+7. Refit every affected neighbour group from the new image products. Do not reuse
+   the old segmentation scores. Preserve the signed measured aperture sums.
+
+STRIPMASK and SHARPMASK are saved separately in detection_products.fits. They are
+also included in BADMASK/DETMASK. Photometry computes the survey area from the new
+DETMASK. The original mosaic is never edited.
+
+Classification still uses checked local reference stars and the reference-profile
+circular Moffat method to 22 mag. Unknown objects remain in the count sample.
+Counts retain Poisson plus Monte Carlo photometric uncertainties and use the same
+19--23 mag fitting interval. No thresholds are chosen from the resulting slope.
+Restoring bright objects and removing faint ones need not steepen that slope.
+Neither 0.6 agreement nor a low negative-image count proves catalogue completeness.
+
+Run validate_masked_review.py after the full pipeline. It checks mask propagation,
+aperture flux sums, count monotonicity, survey area, simple sharp-feature controls,
+and hashes of the protected original files. It writes matched-source and bright
+source audit figures. The brightest-source comparison uses the same old candidates
+inside the new footprint; it is not a galaxy completeness measurement.
+
+Verified run, 22 November 2026:
+- 5161 detected candidates; 3956 usable measurements.
+- 14 sharp features masked; 11 checked PSF references retained.
+- 69 likely stars removed; 3887 remaining sources.
+- Unmasked detection area: 0.052606 square degrees (rounded).
+- Fixed 19--23 mag descriptive slope: 0.391429 +/- 0.013043.
+  The preceding balanced-recovery experiment gave 0.417776 +/- 0.014351.
+  This review improves the audited bright-source retention, but does NOT move
+  the fitted slope closer to 0.6.
+- Same old bright candidates inside the new footprint, matched within 3 pixels:
+  brightest 100: 63 -> 72 usable; brightest 200: 117 -> 136;
+  brightest 500: 332 -> 359. Ranking uses old segment flux.
+- Negative-image control: zero detections, not a calibrated false-positive rate.
+- Protected original file hashes, mask consistency, measured aperture sums,
+  survey area and count checks passed. PSF-sized synthetic controls survive;
+  a single-pixel spike and a one-pixel-wide streak are masked.

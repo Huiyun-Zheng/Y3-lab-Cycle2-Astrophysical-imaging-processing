@@ -1,0 +1,11 @@
+Candidates: 6083
+Original usable: 4505
+Retained original: 4368
+Recovered: 746
+Newly excluded: 137
+Final usable: 5114
+Top 100 by peak, usable: 30 -> 69
+Reasons among newly excluded (can overlap): Counter({'mask_rejected': 123, 'low_snr': 20, 'internal_double': 2})
+Original reasons among recovered: Counter({'blended': 447, 'blended|aperture_contaminated': 233, 'near_artefact': 30, 'aperture_contaminated': 20, 'near_boundary': 9, 'near_artefact|blended': 5, 'near_artefact|near_boundary': 1, 'near_artefact|aperture_contaminated': 1})
+Input SHA256: d9d6199341a60bba55add9ac7a13b62fc02ea82ad321c5c4c54bdad88dd8591b
+Settings: label area 0.03; label light 0.02; shared light 0.02; SNR 5.0; close distance 1.25; bridge SNR 3.0; pair peak SNR 5.0

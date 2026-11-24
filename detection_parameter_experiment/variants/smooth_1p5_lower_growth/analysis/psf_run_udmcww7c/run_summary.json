@@ -1,0 +1,78 @@
+{
+  "created": "2026-11-16T15:02:13.855103",
+  "settings": {
+    "inner_radius": 4.0,
+    "middle_radius": 8.0,
+    "outer_radius": 12.0,
+    "measurement_sky_snr": 10.0,
+    "star_sky_snr": 30.0,
+    "star_detection_snr": 30.0,
+    "reference_detection_snr": 80.0,
+    "reference_sky_snr": 50.0,
+    "maximum_elongation": 1.2,
+    "saturation_fraction": 0.65,
+    "local_neighbours": 25,
+    "minimum_local_references": 8,
+    "maximum_reference_distance": 1200.0,
+    "stamp_half_size": 15,
+    "fit_radius": 10.0,
+    "minimum_fit_snr": 30.0,
+    "maximum_reduced_chi2": 2.0,
+    "maximum_extension_improvement": 4.0,
+    "extension_delta_chi2": 9.0,
+    "maximum_intrinsic_sigma": 0.8,
+    "centroid_shift_limit": 1.0,
+    "psf_fractional_floor": 0.01,
+    "extension_grid": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.5,
+      2.0,
+      3.0
+    ]
+  },
+  "reference": {
+    "half_light_radius_pix": 3.1329421255158487,
+    "reference_sources": 29,
+    "method": "local empirical PSF versus Gaussian-convolved PSF",
+    "effective_gain_assumed": null
+  },
+  "classification_reasons": {
+    "elongated_or_blended": 8,
+    "extended_model_preferred": 75,
+    "extension_not_ruled_out": 6,
+    "fit_failed_or_centroid_at_bound": 52,
+    "insufficient_local_psf": 124,
+    "poor_psf_fit": 34,
+    "uncertain_or_unmeasured": 3256,
+    "well_constrained_psf_match": 10
+  },
+  "reference_psf_reduced_chi2_median": 0.6822364870210391,
+  "area_deg2": 0.05503379008333333,
+  "photometric_sources": 3565,
+  "likely_stars": 10,
+  "remaining_sources": 3555,
+  "remaining_without_radius": 2496,
+  "fit_range": [
+    19.0,
+    24.0
+  ],
+  "descriptive_slope_intercept": [
+    0.4455738911352451,
+    -5.886877674346574
+  ],
+  "magnitude_convention": "MAGZPT - 2.5 log10(flux_ADU * GAIN / EXPTIME)",
+  "limitations": [
+    "Local empirical PSF fitting: approximate diagnostics, not calibrated probabilities.",
+    "Compact galaxies may be removed; uncertain and faint stars may remain.",
+    "Reference locus is inferred, not independently verified as stars.",
+    "PSF fit includes empirical PSF scatter; pixel covariance is not modelled.",
+    "Source Poisson term only included when an effective gain is supplied.",
+    "Electron/s zero-point convention inherited, not independently verified.",
+    "No completeness, total-flux or selection-area correction.",
+    "Cumulative fit is descriptive; counting intervals exclude clustering."
+  ]
+}

@@ -1,0 +1,12 @@
+Baseline: /Users/doriks-/Library/CloudStorage/OneDrive-ImperialCollegeLondon/lab year 3/Cycle2 Astrophysical imaging processing/field_quality_complete/results/aperture_review
+Products read unchanged from: /Users/doriks-/Library/CloudStorage/OneDrive-ImperialCollegeLondon/lab year 3/Cycle2 Astrophysical imaging processing/field_quality_complete/results/aperture_review/detection_products.fits
+Total candidates: 7038
+Internal-peak candidates among old usable: 62
+New internal-peak exclusions: 9
+Excluded bright sources evaluated: 465
+Bright sources refitted: 94
+Bright sources recovered: 16
+Usable: 5669 -> 5676
+Remaining sample: 5607
+Slope: 0.3774138565132026 +/- 0.012454385828670228
+No old usable source was removed for faintness. Shape-only flags are not exclusions.
