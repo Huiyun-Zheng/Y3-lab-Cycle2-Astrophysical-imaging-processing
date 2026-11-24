@@ -1,0 +1,56 @@
+Neighbour-light model: focused mask and blending review
+
+Run the existing source_detection_neighbour_model.py entry point.
+Results overwrite this folder's results directory, as before.
+The pre-change code and results are preserved in before_mask_blend_review.zip.
+Root detection inputs and circular_moffat_analysis are not modified.
+
+Changes in this version
+1. Apply a right-edge strip mask at x >= 2450 and the previously located
+   cross-shaped defect near (1036, 435), with a four-pixel safety margin.
+   BADMASK, DETMASK, ARTEFACT and BOUNDARY are updated in the output FITS;
+   STRIPMASK and MANUALMASK record the two additional exclusions separately.
+2. Check every aperture for another detected peak/core and appreciable shared
+   light. Both members of a significantly overlapping pair are excluded.
+   This check applies to old usable sources AND model-recovered sources.
+3. Check for strong internal multiple peaks that persist at two smoothing
+   scales. This is a photometry-quality flag, not proof of two galaxies;
+   genuine structured galaxies can also be flagged.
+4. A segment being near a mask is no longer sufficient on its own to veto
+   recovery. The actual aperture must avoid DETMASK and pass all image checks,
+   then pass the existing two-initialisation neighbour-model checks.
+
+5. Allow a bounded/unconstrained faint neighbour to contribute at most 3%
+   of the target aperture flux (previously 1%). This provisional tolerance
+   remains subject to the other fit residual, sky, stability and image cuts.
+   It does not mean the contaminating flux is known to 3% accuracy.
+
+Deliberately fixed
+The candidate list, source coordinates, apertures, detection threshold,
+background and RMS remain those in output/source_detection_results.
+This script is a review of those detections; it does not rerun peak finding.
+Candidates inside the new mask remain in the audit catalogue as excluded.
+No aperture enlargement, neighbour subtraction, or target-slope tuning is used.
+The existing model contamination limits remain 0.10 for area and flux.
+
+New catalogue columns
+mask_rejected: actual aperture touches the quality mask or image boundary.
+neighbour_core_rejected: another detected peak/core enters this aperture.
+shared_light_rejected: both apertures share significant measured signal,
+  above 2% of each aperture's positive flux by default.
+internal_multiple_peaks: a strong internal secondary peak is resolved.
+image_quality_rejected: any of these image checks failed.
+original_flags: original detection flags for comparison.
+flags: current reasons, including successful model recovery when applicable.
+
+At zero model-contamination limits, the baseline is now the original strict
+sample AFTER these mask/image/SNR vetoes, not the historical usable count.
+Increasing model limits cannot override a mask or a bright-core/shared-light veto.
+A version-3 scored catalogue must be rescored; its old decisions cannot be reused.
+
+Downstream photometry
+Use results/sources.ecsv and results/detection_products.fits together.
+Re-run the existing circular_moffat_analysis afterwards to regenerate counts
+and effective area. Its old plot is not a result of this updated catalogue.
+Remaining limitations: finite-aperture fluxes, empirical neighbour profiles,
+uncertain classifications, and no completeness or cosmic-variance correction.

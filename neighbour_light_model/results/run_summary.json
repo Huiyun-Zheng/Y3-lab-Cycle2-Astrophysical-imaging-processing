@@ -1,0 +1,102 @@
+{
+  "settings": {
+    "max_shared_flux_fraction": 0.02,
+    "right_strip_start": 2450,
+    "mask_padding": 4,
+    "max_overlap_area_fraction": 0.1,
+    "max_overlap_flux_fraction": 0.1,
+    "profile_betas": [
+      2.5,
+      4.0
+    ],
+    "max_group_sources": 24,
+    "max_fit_pixels": 30000,
+    "max_nfev": 200,
+    "max_reduced_residual": 5.0,
+    "max_coherent_residual": 5.0,
+    "max_score_disagreement": 0.03,
+    "minimum_model_snr": 10.0,
+    "minimum_aperture_snr": 5.0,
+    "max_centre_shift": 1.5,
+    "max_fractional_residual": 0.08,
+    "max_bound_neighbour_fraction": 0.03,
+    "max_sky_flux_fraction": 0.03
+  },
+  "strict_usable": 5547,
+  "baseline_after_snr_cut": 5340,
+  "low_aperture_snr": 36,
+  "usable": 5510,
+  "recovered": 170,
+  "masked_apertures": 421,
+  "neighbour_core_rejected": 103,
+  "shared_light_rejected": 299,
+  "internal_multiple_peaks": 14,
+  "fit_status": {
+    "poor_profile_fit": 15,
+    "hard_quality_failure": 734,
+    "not_reassessed": 5373,
+    "ok": 200,
+    "unstable_neighbour": 353,
+    "profile_sensitive": 14,
+    "structured_residual": 22,
+    "local_sky_sensitive": 464,
+    "group_too_large": 17,
+    "target_profile_at_bound": 8,
+    "low_model_snr": 4
+  },
+  "threshold_sweep": [
+    [
+      0,
+      5340
+    ],
+    [
+      1e-06,
+      5343
+    ],
+    [
+      1e-05,
+      5347
+    ],
+    [
+      0.0001,
+      5350
+    ],
+    [
+      0.001,
+      5357
+    ],
+    [
+      0.003,
+      5370
+    ],
+    [
+      0.005,
+      5374
+    ],
+    [
+      0.01,
+      5383
+    ],
+    [
+      0.02,
+      5418
+    ],
+    [
+      0.03,
+      5439
+    ],
+    [
+      0.05,
+      5468
+    ],
+    [
+      0.1,
+      5510
+    ],
+    [
+      0.2,
+      5534
+    ]
+  ],
+  "source_catalogue_sha256": "c41b283b0e15e436d77898e5496ec705d63edf20185d85d7f03dd71c86b010e3"
+}

@@ -37,7 +37,7 @@
 # - {name: strict_usable, datatype: bool}
 # meta: !!omap
 # - {description: Unclassified candidates; usable excludes fatal quality problems.}
-# - {quality_note: Blended sources require both overlap fractions strictly below their limits. Use usable.}
+# - {quality_note: Blended labels are retained; both overlap fractions must be <= their limits. Zero overlap passes at zero. Use usable.}
 # - {overlap_note: 'Label-overlap flux fraction is a proxy, not true contaminating-light fraction.'}
 # - {flux_note: Background-subtracted ADU assumed; segment and aperture fluxes are not total fluxes.}
 # schema: astropy-2.0

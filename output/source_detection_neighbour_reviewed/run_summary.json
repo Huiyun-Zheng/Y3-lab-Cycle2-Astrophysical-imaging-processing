@@ -23,7 +23,7 @@
   "saturation_used": 36000.0,
   "initial_background": 3419.0,
   "initial_noise": 14.128792762756348,
-  "quality_rule": "Blended sources require both fractions strictly below limits; no special zero mode.",
+  "quality_rule": "Both fractions <= limits at every threshold; zero overlap passes at zero. Blended labels remain unchanged.",
   "strict_usable_candidates": 5547,
   "recovered_candidates": 476,
   "candidates": 7204,

@@ -1,0 +1,18 @@
+Candidates unchanged: 7204
+Usable before: 5654; after: 5510
+Newly accepted: 36; newly excluded: 180
+Of newly excluded, actual mask/boundary failures: 155
+Newly accepted r<21 sources: 22
+r<21 usable over original area before: 382; over retained area after: 375
+Fair comparison within retained aperture-safe area, r<21: before 367; after 375
+Bright sources additionally excluded by non-mask quality checks: 14
+The bright-bin comparison uses identical signed aperture fluxes and gain/exposure calibration for every row.
+Image 1 target: ID 46, near (1036,432), excluded by mask.
+Image 2 targets: ID 31 and ID 50 near (404,3716)/(413,3704), excluded by shared-light check.
+PASS: candidate IDs, positions, aperture sizes, background, RMS and segmentation unchanged.
+PASS: every usable aperture avoids DETMASK and reproduces its saved signed flux.
+PASS: mask is cumulative; masked/shared-light/core/internal-peak vetoes cannot be recovered.
+PASS: 16 protected root/detection/photometry files and unchanged detector snapshot verified by hashes.
+PASS: profile/Jacobian/threshold tests and synthetic isolated/double-source checks.
+Photometry and counts have not been rerun. Their previous files were preserved.
+These are provisional selection improvements, not a measured completeness correction.

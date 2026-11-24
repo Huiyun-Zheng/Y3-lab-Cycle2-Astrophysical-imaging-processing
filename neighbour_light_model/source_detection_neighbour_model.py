@@ -1,21 +1,22 @@
-"""Reassess blended sources using jointly fitted observed-light profiles.
+"""Reassess neighbour-affected sources using jointly fitted light profiles.
 
 Read existing strict detections; preserve input detections and apertures.
-Each run replaces this experiment's outputs in the fixed results directory.
 These are empirical image-profile fits, not a calibrated PSF/galaxy decomposition.
 """
+
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from collections import Counter
+from types import SimpleNamespace
 import argparse
 import hashlib
 import json
-import shutil
 
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 from scipy.optimize import least_squares
+from scipy.spatial import cKDTree  # Use: Fast spatial neighbour search
 from scipy import ndimage as ndi
 from scipy.special import logsumexp, expit
 import matplotlib
@@ -27,27 +28,65 @@ import detection_snapshot as detector
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
+PARAMETERS_PER_SOURCE = 7
 
 
 @dataclass
 class Settings:
-    # New definitions: mean pixel contamination and integrated contamination.
-    # Both use model light, including wings outside segmentation labels.
+    # Maximum allowed shared-light fraction.
+    max_shared_flux_fraction: float = 0.02
+
+    # Starting column of the right-hand image strip.
+    right_strip_start: int = 2450
+
+    # Extra pixels added around masked regions.
+    mask_padding: int = 4
+
+    # Maximum allowed overlap in area and flux.
     max_overlap_area_fraction: float = 0.10
     max_overlap_flux_fraction: float = 0.10
+
+    # Initial beta values for testing fit stability.
     profile_betas: tuple = (2.5, 4.0)
-    max_group_sources: int = 12
-    max_fit_pixels: int = 16000
-    max_nfev: int = 100
+
+    # Maximum number of sources fitted together.
+    max_group_sources: int = 24
+    # Maximum number of pixels used in a fit.
+    max_fit_pixels: int = 30000
+    # Maximum number of fitting function evaluations.
+    max_nfev: int = 200
+
+    # Limits on fitting residuals and score differences.
     max_reduced_residual: float = 5.0
     max_coherent_residual: float = 5.0
     max_score_disagreement: float = 0.03
+
+    # Minimum required signal-to-npise ratios
     minimum_model_snr: float = 10.0
+    minimum_aperture_snr: float = 5.0
+
+    # Maximum allowed change in source centre (pixels).
+    max_centre_shift: float = 1.5
+
+    # Maximum allowed fractional residual.
+    max_fractional_residual: float = 0.08
+
+    # A faint neighbour hitting a fit bound need not veto a bright target.
+    # Maximum contribution from a neighbour at a fit bound.
+    max_bound_neighbour_fraction: float = 0.03
+
+    # Maximum allowed sky-flux fraction.
+    max_sky_flux_fraction: float = 0.03
 
     def __post_init__(self):
-        for value in (self.max_overlap_area_fraction, self.max_overlap_flux_fraction):
+        for value in (self.max_overlap_area_fraction, self.max_overlap_flux_fraction, self.max_shared_flux_fraction):
             if not np.isfinite(value) or not 0 <= value <= 1:
                 raise ValueError('Contamination limits must lie in [0, 1].')
+        for name, value in asdict(self).items():
+            if name.startswith('max_overlap') or name in ('profile_betas', 'max_shared_flux_fraction'):
+                continue
+            if not np.isfinite(value) or value <= 0:
+                raise ValueError(f'{name} must be finite and positive.')
 
 
 def aperture_grid(row, shape):
@@ -69,44 +108,62 @@ def coordinates(rows, xx, yy):
     theta = np.radians(np.asarray(rows['aperture_theta_deg'], float))
     dx = np.asarray(xx).ravel()[:, None] - np.asarray(rows['x'])[None, :]
     dy = np.asarray(yy).ravel()[:, None] - np.asarray(rows['y'])[None, :]
-    return (dx * np.cos(theta) + dy * np.sin(theta)) ** 2, (-dx * np.sin(theta) + dy * np.cos(theta)) ** 2
+    return dx * np.cos(theta) + dy * np.sin(theta), -dx * np.sin(theta) + dy * np.cos(theta)
 
 
-def log_components(parameters, u2, v2, beta):
-    p = np.asarray(parameters[:-1]).reshape(-1, 3)
-    q = u2 * np.exp(-2 * p[:, 1]) + v2 * np.exp(-2 * p[:, 2])
-    return p[:, 0] - beta * np.log1p(q)
+def log_components(parameters, u, v, beta):
+    # Parameters: log amplitude, log widths, centre offsets, angle, fitted beta.
+    # The beta argument is the starting value, retained for the calling code.
+    p = np.asarray(parameters[:-1]).reshape(-1, PARAMETERS_PER_SOURCE)
+    du, dv = u - p[:, 3], v - p[:, 4]
+    c, s = np.cos(p[:, 5]), np.sin(p[:, 5])
+    uu, vv = du * c + dv * s, -du * s + dv * c
+    q = uu ** 2 * np.exp(-2 * p[:, 1]) + vv ** 2 * np.exp(-2 * p[:, 2])
+    return p[:, 0] - p[:, 6] * np.log1p(q)
 
 
 def fit_profiles(rows, xx, yy, data, error, beta, settings):
     """Simultaneously fit positive Moffat profiles plus one residual sky level.
 
-    Centroids and orientations remain at catalogue values. Amplitudes and
-    both widths are fitted. The analytic Jacobian avoids repeated image fits.
+    Allow small centre shifts within the model; catalogue apertures stay fixed.
+    Fit amplitudes, widths, angles and beta; keep the catalogue apertures fixed.
     """
-    u2, v2 = coordinates(rows, xx, yy)
+    u, v = coordinates(rows, xx, yy)
     # Moment-to-Moffat conversion is only an initial guess, not a fixed width.
     aa = np.clip(np.asarray(rows['major_sigma_pix']) * np.sqrt(2 * (beta - 2)), 1, 25)
     bb = np.clip(np.asarray(rows['minor_sigma_pix']) * np.sqrt(2 * (beta - 2)), 1, 25)
     amplitudes = np.maximum(np.asarray(rows['peak_adu']) - np.median(rows['local_background']), 1)
-    p0 = np.column_stack([np.log(amplitudes), np.log(aa), np.log(bb)]).ravel()
+    p0 = np.column_stack([np.log(amplitudes), np.log(aa), np.log(bb),
+                          np.zeros(len(rows)), np.zeros(len(rows)),
+                          np.zeros(len(rows)), np.full(len(rows), beta)]).ravel()
     sky_limit = 3 * float(np.median(error))
     p0 = np.r_[p0, 0.0]
-    lower = np.r_[np.tile([np.log(.01), np.log(.6), np.log(.6)], len(rows)), -sky_limit]
-    upper = np.r_[np.tile([np.log(1e6), np.log(45), np.log(45)], len(rows)), sky_limit]
+    shift = settings.max_centre_shift
+    # Angle is periodic: an artificial angle boundary can trap a valid ellipse.
+    lower = np.r_[np.tile([np.log(.01), np.log(.6), np.log(.6), -shift, -shift, -np.inf, 1.2], len(rows)), -sky_limit]
+    upper = np.r_[np.tile([np.log(1e6), np.log(45), np.log(45), shift, shift, np.inf, 12.0], len(rows)), sky_limit]
 
     def residual(p):
-        return (np.exp(log_components(p, u2, v2, beta)).sum(axis=1) + p[-1] - data) / error
+        return (np.exp(log_components(p, u, v, beta)).sum(axis=1) + p[-1] - data) / error
 
     def jacobian(p):
-        pars = p[:-1].reshape(-1, 3)
-        qa, qb = u2 * np.exp(-2 * pars[:, 1]), v2 * np.exp(-2 * pars[:, 2])
+        pars = p[:-1].reshape(-1, PARAMETERS_PER_SOURCE)
+        du, dv = u - pars[:, 3], v - pars[:, 4]
+        c, s = np.cos(pars[:, 5]), np.sin(pars[:, 5])
+        uu, vv = du * c + dv * s, -du * s + dv * c
+        fitted_beta = pars[:, 6]
+        inv_a2, inv_b2 = np.exp(-2 * pars[:, 1]), np.exp(-2 * pars[:, 2])
+        qa, qb = uu ** 2 * inv_a2, vv ** 2 * inv_b2
         q = 1 + qa + qb
-        model = np.exp(pars[:, 0] - beta * np.log(q))
+        model = np.exp(pars[:, 0] - fitted_beta * np.log(q))
         jac = np.empty((len(data), len(p)))
-        jac[:, 0:-1:3] = model
-        jac[:, 1:-1:3] = 2 * beta * model * qa / q
-        jac[:, 2:-1:3] = 2 * beta * model * qb / q
+        jac[:, 0:-1:7] = model
+        jac[:, 1:-1:7] = 2 * fitted_beta * model * qa / q
+        jac[:, 2:-1:7] = 2 * fitted_beta * model * qb / q
+        jac[:, 3:-1:7] = 2 * fitted_beta * model * (uu * c * inv_a2 - vv * s * inv_b2) / q
+        jac[:, 4:-1:7] = 2 * fitted_beta * model * (uu * s * inv_a2 + vv * c * inv_b2) / q
+        jac[:, 5:-1:7] = -2 * fitted_beta * model * uu * vv * (inv_a2 - inv_b2) / q
+        jac[:, 6:-1:7] = -model * np.log(q)
         jac[:, -1] = 1
         return jac / error[:, None]
 
@@ -120,7 +177,7 @@ def contamination_scores(log_models, target):
     """Continuous fractional area and flux, evaluated stably in log space."""
     others = np.delete(log_models, target, axis=1)
     if others.shape[1] == 0:
-        return np.nan, np.nan
+        return 0.0, 0.0
     target_light = log_models[:, target]
     neighbour_light = logsumexp(others, axis=1)
     # Mean fractional contamination per aperture pixel: effective area fraction.
@@ -130,34 +187,182 @@ def contamination_scores(log_models, target):
     return area_fraction, flux_fraction
 
 
+def has_internal_pair(signal, rms, labels, label, x, y, a, b, theta, settings):
+    """Flag a strong, separated secondary peak inside one source label.
+
+    This is a conservative photometry flag; galaxy knots can also make peaks.
+    Require the structure at two smoothing scales, using the existing dip test.
+    """
+    row = dict(x=x, y=y, aperture_a_pix=a+5, aperture_b_pix=b+5,
+               aperture_theta_deg=np.degrees(theta))
+    bounds, xx, yy, ap, edge = aperture_grid(row, signal.shape)
+    c, s = np.cos(theta), np.sin(theta)
+    u, v = (xx - x) * c + (yy - y) * s, -(xx - x) * s + (yy - y) * c
+    own = ((u / a) ** 2 + (v / b) ** 2 <= 1) & (labels[bounds] == label)
+    found = []
+    cuts = SimpleNamespace(peak_prominence_sigma=1.5, peak_prominence_fraction=0.0)
+    for width in [0.5, 0.7]:
+        smooth = ndi.gaussian_filter(signal[bounds].astype(float), width)
+        surface = smooth / rms[bounds]
+        maxima = own & (smooth == ndi.maximum_filter(smooth, 3)) & (surface >= 5)
+        groups, n = ndi.label(maxima)
+        positions = (
+            ndi.maximum_position(surface, groups, np.arange(1, n + 1)) if n else []
+        )
+        # The stronger smoothing is only a persistence check. Requiring the
+        # same peak height and valley depth there would miss real companions.
+        kept = (
+            detector.select_significant_peaks(surface, own, positions, cuts)
+            if width == 0.5
+            else sorted(positions, key=lambda p: smooth[p], reverse=True)
+        )
+        if not kept:
+            return False
+        primary = kept[0]
+        secondary = []
+        for p in kept[1:]:
+            if width == 0.7:
+                secondary.append(p)
+                continue
+            core = own & (np.hypot(xx - xx[p], yy - yy[p]) <= 2)
+            total = np.maximum(signal[bounds][own], 0).sum()
+            fraction = np.maximum(signal[bounds][core], 0).sum() / max(total, 1e-30)
+            if (
+                np.linalg.norm(np.subtract(p, primary)) >= 5
+                and surface[p] >= 7.5
+                and smooth[p] >= 0.15 * smooth[primary]
+                and fraction >= 0.02
+            ):
+                secondary.append(p)
+        found.append(secondary)
+    return any(
+        np.linalg.norm(np.subtract(p, q)) <= 1.5 for p in found[0] for q in found[1]
+    )
+
+
+def image_quality_checks(table, residual, noise, labels, bad, settings):
+    """Apply the same observed-pixel checks to old and recovered sources.
+
+    Labels are a contamination proxy, not a separation of actual light.
+    A multi-peak flag does not prove that an object is two galaxies.
+    """
+    result = table.copy()
+    n = len(table)
+    masked = np.zeros(n, bool)
+    core_rejected = np.zeros(n, bool)
+    internal = np.zeros(n, bool)
+    pixels, positive_flux = [], []
+    peak_lookup = {int(r['segment_id']): (int(r['peak_y']), int(r['peak_x'])) for r in table}
+    for i, row in enumerate(table):
+        bounds, xx, yy, ap, edge = aperture_grid(row, residual.shape)
+        data, rms, labs = residual[bounds], noise[bounds], labels[bounds]
+        masked[i] = edge or not ap.any() or np.any(bad[bounds][ap])
+        positive = np.maximum(data, 0)
+        denominator = max(float(positive[ap].sum()), 1e-30)
+        pixels.append(yy[ap]*residual.shape[1]+xx[ap])
+        positive_flux.append(denominator)
+        other = ap & (labs > 0) & (labs != row['segment_id'])
+        core = np.zeros(ap.shape, bool)
+        for label in np.unique(labs[other]):
+            py, px = peak_lookup[int(label)]
+            if bounds[0].start <= py < bounds[0].stop and bounds[1].start <= px < bounds[1].stop:
+                if ap[py-bounds[0].start, px-bounds[1].start]:
+                    core_rejected[i] = True
+            peak = residual[py, px]
+            core |= other & (labs == label) & (data >= .30*peak) & (peak >= 10*rms)
+        core_rejected[i] |= core.sum() >= 2 and positive[core].sum()/denominator >= .01
+        if not masked[i]:
+            internal[i] = has_internal_pair(residual, noise, labels, int(row['segment_id']),
+                row['x'], row['y'], row['aperture_a_pix'], row['aperture_b_pix'],
+                np.radians(row['aperture_theta_deg']), settings)
+    shared_rejected = np.zeros(n, bool)
+    pairs = []
+    xy = np.column_stack([table['x'], table['y']])
+    radii = np.asarray(table['aperture_a_pix'])
+    for i, j in cKDTree(xy).query_pairs(2*max(radii), output_type='ndarray'):
+        if np.linalg.norm(xy[i]-xy[j]) >= radii[i]+radii[j]:
+            continue
+        common = np.intersect1d(pixels[i], pixels[j], assume_unique=True)
+        # Bad pixels cannot supply evidence of a real shared source core.
+        common = common[~bad.ravel()[common]]
+        if len(common) < 3:
+            continue
+        values, errors = residual.ravel()[common], noise.ravel()[common].astype(float)
+        flux = float(values.sum())
+        f1, f2 = flux/positive_flux[i], flux/positive_flux[j]
+        reject = (np.count_nonzero(values > 3*errors) >= 3
+                  and flux > 5*np.sqrt(np.sum(errors**2))
+                  and min(f1, f2) > settings.max_shared_flux_fraction)
+        if reject:
+            shared_rejected[[i,j]] = True
+        pairs.append((int(table['id'][i]), int(table['id'][j]), f1, f2, reject))
+    result['mask_rejected'] = masked
+    result['neighbour_core_rejected'] = core_rejected
+    result['shared_light_rejected'] = shared_rejected
+    result['internal_multiple_peaks'] = internal
+    result['image_quality_rejected'] = masked | core_rejected | shared_rejected | internal
+    audit = Table(rows=pairs, names=['id1','id2','fraction1','fraction2','rejected'],
+                  dtype=[int,int,float,float,bool])
+    return result, audit
+
+
 def select_sources(table, settings):
-    """Keep the strict baseline, and recover only model-qualified blended rows."""
-    recover = (np.asarray(table['blended']) & np.asarray(table['model_valid'])
+    """Recover qualified neighbours, then apply the same S/N cut to everyone."""
+    recover = (np.asarray(table['reassessment_candidate']) & np.asarray(table['model_valid'])
                & (table['model_area_fraction'] < settings.max_overlap_area_fraction)
                & (table['model_flux_fraction'] < settings.max_overlap_flux_fraction))
-    return np.asarray(table['strict_usable']) | recover
+    signal_ok = np.isfinite(table['aperture_snr']) & (table['aperture_snr'] >= settings.minimum_aperture_snr)
+    image_ok = ~np.asarray(table['image_quality_rejected'], bool) if 'image_quality_rejected' in table.colnames else np.ones(len(table), bool)
+    return (np.asarray(table['strict_usable']) | recover) & signal_ok & image_ok
 
 
-def score_catalogue(table, residual, noise, bad, saturation, settings, only_parents=None):
+def score_catalogue(table, residual, noise, bad, saturation, settings, gain, only_parents=None):
     result = table.copy()
     result['strict_usable'] = np.asarray(table['usable'], bool)
     result['original_flags'] = np.asarray(table['flags'], str)
     result['original_aperture_flux_adu'] = np.asarray(table['aperture_flux_adu'], float)
     for name in ['model_area_fraction', 'model_flux_fraction', 'model_residual_score',
                  'model_score_disagreement', 'model_aperture_snr', 'model_coherent_residual',
-                 'model_aperture_flux_adu']:
+                 'model_aperture_flux_adu', 'model_fractional_residual',
+                 'model_bound_neighbour_fraction', 'model_sky_flux_fraction',
+                 'aperture_snr', 'aperture_flux_error_adu']:
         result[name] = np.full(len(table), np.nan)
     result['model_valid'] = np.zeros(len(table), bool)
     result['model_status'] = np.full(len(table), 'not_reassessed', dtype='U32')
     result['local_background'] = np.asarray(table['local_background'], float)
+    # Include source shot noise. GAIN must convert this image's ADU to electrons.
+    if not np.isfinite(gain) or gain <= 0:
+        raise ValueError('GAIN must be positive and match the image units.')
+    total_noise = np.sqrt(noise ** 2 + np.maximum(residual, 0) / gain)
+    hard_failure = np.zeros(len(table), bool)
+    for i, row in enumerate(table):
+        bounds, _, _, aperture, edge = aperture_grid(row, residual.shape)
+        values = residual[bounds][aperture]
+        errors = total_noise[bounds][aperture]
+        hard_failure[i] = (edge or row['aperture_capped'] or row['elongation'] > 6
+                           or np.any(bad[bounds][aperture])
+                           or not np.all(np.isfinite(values))
+                           or not np.all(np.isfinite(errors)) or np.any(errors <= 0))
+        if 'image_quality_rejected' in table.colnames:
+            hard_failure[i] |= bool(row['image_quality_rejected'])
+        if len(values) and not hard_failure[i]:
+            flux_error = float(np.sqrt(np.sum(errors ** 2)))
+            result['aperture_flux_error_adu'][i] = flux_error
+            result['aperture_snr'][i] = float(values.sum() / flux_error)
+    # Contaminated but unblended sources also deserve a neighbour assessment.
+    reassess = (~result['strict_usable'] & ~hard_failure
+                & (table['blended'] | table['aperture_contaminated']
+                   | table['near_artefact'] | table['near_boundary']))
+    result['reassessment_candidate'] = reassess
+    result['model_status'][hard_failure] = 'hard_quality_failure'
     xy = np.column_stack([table['x'], table['y']])
-    parents = np.unique(table['parent_id'][table['blended']])
+    parents = np.unique(table['parent_id'][reassess])
     if only_parents is not None:
         parents = np.intersect1d(parents, only_parents)
     diagnostics = []
 
     for count, parent in enumerate(parents):
-        targets = np.flatnonzero((table['parent_id'] == parent) & table['blended'])
+        targets = np.flatnonzero((table['parent_id'] == parent) & reassess)
         group = table[targets]
         pad = np.maximum(np.asarray(group['aperture_a_pix']) + 5,
                          3 * np.asarray(group['major_sigma_pix']) + 8)
@@ -174,9 +379,9 @@ def score_catalogue(table, residual, noise, bad, saturation, settings, only_pare
             result['model_status'][targets] = 'group_too_large'
             continue
         yy, xx = np.mgrid[y0:y1, x0:x1]
-        data, error = residual[y0:y1, x0:x1], noise[y0:y1, x0:x1]
+        data, error = residual[y0:y1, x0:x1], total_noise[y0:y1, x0:x1]
         clean = (~bad[y0:y1, x0:x1] & np.isfinite(data) & np.isfinite(error) & (error > 0))
-        if clean.sum() < max(100, 10 * (3 * len(included) + 1)):
+        if clean.sum() < max(100, 10 * (PARAMETERS_PER_SOURCE * len(included) + 1)):
             result['model_status'][targets] = 'insufficient_pixels'
             continue
         rows = result[included]
@@ -188,15 +393,15 @@ def score_catalogue(table, residual, noise, bad, saturation, settings, only_pare
         except (ValueError, FloatingPointError, np.linalg.LinAlgError):
             result['model_status'][targets] = 'fit_failed'
             continue
-        success = all(f.success and not np.any(f.active_mask) for _, f in fits_for_group)
+        success = all(f.success for _, f in fits_for_group)
         if not success:
-            result['model_status'][targets] = 'fit_failed_or_at_bound'
+            result['model_status'][targets] = 'fit_not_converged'
             continue
 
         for i in targets:
             row = table[i]
             bounds, ax, ay, aperture, edge = aperture_grid(row, residual.shape)
-            hard = (edge or row['near_artefact'] or row['near_boundary'] or row['aperture_capped']
+            hard = (edge or row['aperture_capped']
                     or row['elongation'] > 6 or np.any(bad[bounds][aperture])
                     or not np.all(np.isfinite(residual[bounds][aperture])))
             if hard:
@@ -204,6 +409,12 @@ def score_catalogue(table, residual, noise, bad, saturation, settings, only_pare
                 continue
             # Test all included neighbour peaks in the actual aperture.
             target_index = int(np.flatnonzero(included == i)[0])
+            # A bound on this source's amplitude or size still makes it unreliable.
+            start = PARAMETERS_PER_SOURCE * target_index
+            if any(np.any(f.active_mask[start:start + 3])
+                   for _, f in fits_for_group):
+                result['model_status'][i] = 'target_profile_at_bound'
+                continue
             other = rows[np.arange(len(rows)) != target_index]
             px = np.asarray(other['peak_x'], int) - bounds[1].start
             py = np.asarray(other['peak_y'], int) - bounds[0].start
@@ -211,14 +422,15 @@ def score_catalogue(table, residual, noise, bad, saturation, settings, only_pare
             if np.any(aperture[py[inside], px[inside]]):
                 result['model_status'][i] = 'neighbour_peak_inside'
                 continue
-            u2, v2 = coordinates(rows, ax[aperture], ay[aperture])
+            u, v = coordinates(rows, ax[aperture], ay[aperture])
             scores, residual_scores, snrs, coherent = [], [], [], []
+            fractional_residuals, bound_fractions, sky_fractions = [], [], []
             for beta, fit in fits_for_group:
-                components = log_components(fit.x, u2, v2, beta)
+                components = log_components(fit.x, u, v, beta)
                 scores.append(contamination_scores(components, target_index))
-                full_u2, full_v2 = coordinates(rows, ax, ay)
-                full_model = np.exp(log_components(fit.x, full_u2, full_v2, beta)).sum(axis=1).reshape(ax.shape) + fit.x[-1]
-                whitened = (residual[bounds] - full_model) / noise[bounds]
+                full_u, full_v = coordinates(rows, ax, ay)
+                full_model = np.exp(log_components(fit.x, full_u, full_v, beta)).sum(axis=1).reshape(ax.shape) + fit.x[-1]
+                whitened = (residual[bounds] - full_model) / total_noise[bounds]
                 # Detect spatially coherent mismatch hidden by an average residual.
                 kernel = np.exp(-np.arange(-4, 5, dtype=float) ** 2 / 2)
                 kernel /= kernel.sum()
@@ -226,12 +438,26 @@ def score_catalogue(table, residual, noise, bad, saturation, settings, only_pare
                 smoothed = ndi.gaussian_filter(whitened, 1.0, mode='nearest') / smooth_rms
                 coherent.append(float(np.percentile(np.abs(smoothed[aperture]), 95)))
                 model = np.exp(components).sum(axis=1) + fit.x[-1]
-                # This is a background-RMS residual diagnostic, not formal chi^2:
-                # source Poisson noise and mosaic correlations are not calibrated.
+                # This is a local residual score, not a formal reduced chi-square.
+                # Mosaic correlations and profile mismatch are not calibrated.
                 residual_scores.append(float(np.mean(((model - residual[bounds][aperture])
-                                                      / noise[bounds][aperture]) ** 2)))
+                                                      / total_noise[bounds][aperture]) ** 2)))
                 snrs.append(float(np.exp(components[:, target_index]).sum()
-                                  / np.sqrt(np.sum(noise[bounds][aperture] ** 2))))
+                                  / np.sqrt(np.sum(total_noise[bounds][aperture] ** 2))))
+                measured_flux = float(residual[bounds][aperture].sum())
+                denominator = max(measured_flux, np.finfo(float).tiny)
+                # Do not demand a perfect Moffat shape from a bright galaxy.
+                # Still reject a mismatch large relative to its measured flux.
+                fractional_residuals.append(float(np.abs(model - residual[bounds][aperture]).sum()
+                                                 / denominator))
+                # Angle endpoints describe equivalent axes, so ignore that bound.
+                active = fit.active_mask[:-1].reshape(-1, PARAMETERS_PER_SOURCE)
+                bound_sources = np.any(active[:, [0, 1, 2, 3, 4, 6]] != 0, axis=1)
+                bound_sources[target_index] = False
+                bound_fractions.append(float(np.exp(components[:, bound_sources]).sum() / denominator))
+                # The extra fitted sky is not subtracted from the saved aperture.
+                # Its contribution must therefore be small before accepting it.
+                sky_fractions.append(float(abs(fit.x[-1]) * aperture.sum() / denominator))
             scores = np.asarray(scores)
             upper_scores = np.max(scores, axis=0)
             disagreement = float(np.max(np.ptp(scores, axis=0)))
@@ -240,11 +466,19 @@ def score_catalogue(table, residual, noise, bad, saturation, settings, only_pare
             result['model_score_disagreement'][i] = disagreement
             result['model_aperture_snr'][i] = min(snrs)
             result['model_coherent_residual'][i] = max(coherent)
-            if not np.all(np.isfinite(scores)) or np.any(upper_scores <= 0):
+            result['model_fractional_residual'][i] = max(fractional_residuals)
+            result['model_bound_neighbour_fraction'][i] = max(bound_fractions)
+            result['model_sky_flux_fraction'][i] = max(sky_fractions)
+            small_mismatch = max(fractional_residuals) <= settings.max_fractional_residual
+            if not np.all(np.isfinite(scores)) or np.any(upper_scores < 0):
                 result['model_status'][i] = 'unresolved_model_score'
-            elif max(residual_scores) > settings.max_reduced_residual:
+            elif max(bound_fractions) > settings.max_bound_neighbour_fraction:
+                result['model_status'][i] = 'unstable_neighbour'
+            elif max(sky_fractions) > settings.max_sky_flux_fraction:
+                result['model_status'][i] = 'local_sky_sensitive'
+            elif max(residual_scores) > settings.max_reduced_residual and not small_mismatch:
                 result['model_status'][i] = 'poor_profile_fit'
-            elif max(coherent) > settings.max_coherent_residual:
+            elif max(coherent) > settings.max_coherent_residual and not small_mismatch:
                 result['model_status'][i] = 'structured_residual'
             elif disagreement > settings.max_score_disagreement:
                 result['model_status'][i] = 'profile_sensitive'
@@ -256,10 +490,10 @@ def score_catalogue(table, residual, noise, bad, saturation, settings, only_pare
                 # Compute the measured sum, including neighbour light. We do not
                 # silently substitute or subtract model flux from photometry.
                 result['model_aperture_flux_adu'][i] = float(residual[bounds][aperture].sum())
-            if int(row['id']) in (215, 364) or (result['model_valid'][i] and len(diagnostics) < 6):
+            if result['model_valid'][i] and len(diagnostics) < 10:
                 beta, fit = fits_for_group[0]
-                all_u2, all_v2 = coordinates(rows, xx, yy)
-                model_cutout = np.exp(log_components(fit.x, all_u2, all_v2, beta)).sum(axis=1).reshape(xx.shape) + fit.x[-1]
+                all_u, all_v = coordinates(rows, xx, yy)
+                model_cutout = np.exp(log_components(fit.x, all_u, all_v, beta)).sum(axis=1).reshape(xx.shape) + fit.x[-1]
                 diagnostics.append((int(row['id']), (x0, x1, y0, y1), data.copy(), model_cutout, error.copy()))
         if count % 50 == 0:
             print(f'Groups checked: {count + 1}/{len(parents)}', flush=True)
@@ -270,8 +504,8 @@ def save_diagnostics(diagnostics, output):
     for identifier, bounds, data, model, error in diagnostics[:10]:
         fig, axes = plt.subplots(1, 3, figsize=(10, 3.5))
         for ax, values, title in zip(axes, [data / error, model / error, (data - model) / error],
-                                    ['Data / RMS', 'Joint profile model / RMS', 'Residual / RMS']):
-            ax.imshow(values, origin='lower', cmap='gray', vmin=-3, vmax=12 if title != 'Residual / RMS' else 3)
+                                    ['Data / error', 'Model / error', 'Residual / error']):
+            ax.imshow(values, origin='lower', cmap='gray', vmin=-3, vmax=12 if title != 'Residual / error' else 3)
             ax.set_title(title)
         fig.suptitle(f'Source {identifier}')
         fig.tight_layout()
@@ -279,11 +513,51 @@ def save_diagnostics(diagnostics, output):
         plt.close(fig)
 
 
-def run(settings, scored_catalogue=None):
-    output = BASE / 'results'
+def save_bright_review(residual, noise, catalogue, output, recovered_only=False):
+    """Show bright sources at a useful scale for a visual quality check."""
+    from matplotlib.patches import Ellipse
+
+    indices = np.arange(len(catalogue))
+    if recovered_only:
+        indices = indices[catalogue['usable'] & ~catalogue['strict_usable']]
+    brightest = indices[np.argsort(np.asarray(catalogue['segment_flux_adu'][indices]))[-12:][::-1]]
+    fig, axes = plt.subplots(3, 4, figsize=(12, 9))
+    for ax in axes.flat:
+        ax.set_axis_off()
+    for ax, i in zip(axes.flat, brightest):
+        row = catalogue[i]
+        radius = int(max(24, row['aperture_a_pix'] + 10))
+        x, y = int(round(row['x'])), int(round(row['y']))
+        x0, x1 = max(0, x - radius), min(residual.shape[1], x + radius + 1)
+        y0, y1 = max(0, y - radius), min(residual.shape[0], y + radius + 1)
+        cutout = residual[y0:y1, x0:x1]
+        scale = max(float(np.median(noise[y0:y1, x0:x1])), 1.0)
+        display = np.arcsinh(cutout / scale)
+        ax.imshow(display, origin='lower', cmap='gray', vmin=-1,
+                  vmax=max(2, float(np.percentile(display, 99.5))),
+                  extent=(x0 - .5, x1 - .5, y0 - .5, y1 - .5))
+        colour = 'royalblue' if row['usable'] else 'red'
+        ax.add_patch(Ellipse((row['x'], row['y']), 2 * row['aperture_a_pix'],
+                             2 * row['aperture_b_pix'], angle=row['aperture_theta_deg'],
+                             fill=False, edgecolor=colour, linewidth=1.2))
+        status = 'usable' if row['usable'] else str(row['model_status'])
+        if status == 'ok':
+            status = 'contamination limit'
+        ax.set_title(f"ID {row['id']}: {status}", fontsize=9)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    fig.tight_layout()
+    filename = 'recovered_bright_sources.png' if recovered_only else 'bright_source_review.png'
+    fig.savefig(output / filename, dpi=300)
+    plt.close(fig)
+
+
+def run(settings, scored_catalogue=None, output=None):
+    output = BASE / 'results' if output is None else Path(output)
     products_dir = ROOT / 'output/source_detection_results'
     original = Table.read(products_dir / 'sources.ecsv')
-    image = fits.getdata(ROOT / 'Astro/Fits_Data/mosaic.fits').astype(np.float32)
+    image, header = fits.getdata(ROOT / 'Astro/Fits_Data/mosaic.fits', header=True)
+    image = image.astype(np.float32)
     with fits.open(products_dir / 'detection_products.fits') as hdul:
         background = hdul['BACKGROUND'].data.copy()
         noise = hdul['RMS'].data.copy()
@@ -292,13 +566,34 @@ def run(settings, scored_catalogue=None):
         boundary = hdul['BOUNDARY'].data.astype(bool)
         saturated = hdul['SATURATED'].data.astype(bool)
         saturation = float(hdul[0].header['SATLEVEL'])
+        labels = hdul['SOURCES'].data.copy()
+        detection_mask = hdul['DETMASK'].data.astype(bool)
+    # Keep the input detections and background fixed. These are additional
+    # exclusions, not a new detection threshold or a global background change.
+    strip = np.zeros(image.shape, bool)
+    strip[:, settings.right_strip_start:] = True
+    manual = np.zeros(image.shape, bool)
+    # Previously located cross-shaped defect near (1036, 435). Its origin
+    # need not be identified as a cosmic ray in order to exclude bad pixels.
+    manual[423:432, 1026:1046] = True
+    manual[428:453, 1033:1041] = True
+    boundary |= strip
+    artefact |= manual
+    raw_bad = bad | strip | manual
+    detection_mask |= ndi.binary_dilation(strip | manual, iterations=settings.mask_padding)
+    bad = detection_mask
     residual = image - background
+    print('Checking actual masks, neighbour cores, shared light and internal peaks...', flush=True)
+    original, pair_audit = image_quality_checks(original, residual, noise, labels, bad, settings)
     diagnostics = []
     if scored_catalogue is None:
         original['local_background'] = background[np.rint(original['y']).astype(int), np.rint(original['x']).astype(int)]
-        table, diagnostics = score_catalogue(original, residual, noise, bad, saturation, settings)
+        table, diagnostics = score_catalogue(original, residual, noise, bad, saturation, settings,
+                                             gain=float(header['GAIN']))
     else:
         table = Table.read(scored_catalogue)
+        if table.meta.get('model_version') != 4:
+            raise ValueError('This catalogue needs to be rescored with the current model.')
         assert np.array_equal(table['segment_id'], original['segment_id'])
         assert np.allclose(table['x'], original['x']) and np.allclose(table['y'], original['y'])
         # Model quality settings are fixed when scores are computed; only limits change.
@@ -315,28 +610,46 @@ def run(settings, scored_catalogue=None):
     # only the old neighbour-label contamination veto, not any hard-quality flag.
     flags = np.asarray(table['original_flags'], dtype='U200').copy()
     for i in np.flatnonzero(recovered):
-        parts = [p for p in flags[i].split('|') if p not in ('none', 'aperture_contaminated')]
+        parts = [p for p in flags[i].split('|') if p not in ('none', 'aperture_contaminated', 'near_artefact', 'near_boundary')]
         flags[i] = '|'.join(parts + ['model_recovered'])
     table['flags'] = flags
+    for column, reason in [('mask_rejected', 'aperture_masked'),
+                           ('neighbour_core_rejected', 'neighbour_core'),
+                           ('shared_light_rejected', 'shared_light'),
+                           ('internal_multiple_peaks', 'internal_multiple_peaks')]:
+        for i in np.flatnonzero(table[column]):
+            parts = [p for p in str(table['flags'][i]).split('|') if p != 'none']
+            table['flags'][i] = '|'.join(parts + [reason])
+    faint = np.isfinite(table['aperture_snr']) & (table['aperture_snr'] < settings.minimum_aperture_snr)
+    for i in np.flatnonzero(faint):
+        parts = [p for p in str(table['flags'][i]).split('|') if p != 'none']
+        table['flags'][i] = '|'.join(parts + ['low_aperture_snr'])
     table['aperture_flux_adu'] = np.asarray(original['aperture_flux_adu'], float).copy()
     table['aperture_flux_adu'][recovered] = table['model_aperture_flux_adu'][recovered]
     table['aperture_contaminated'] = np.asarray(original['aperture_contaminated'], bool).copy()
     table['aperture_contaminated'][recovered] = False
     table.meta['input_catalogue_sha256'] = hashlib.sha256((products_dir / 'sources.ecsv').read_bytes()).hexdigest()
     table.meta['model_settings'] = json.dumps(asdict(settings))
-    table.meta['score_note'] = 'Observed Moffat profile proxy; not calibrated true contamination or a confidence bound.'
+    table.meta['model_version'] = 4
+    table.meta['review_note'] = 'All rows pass the same observed-image vetoes. Near-mask segment flags alone do not veto a clean aperture; recovery still requires the neighbour model.'
+    table.meta['mask_note'] = f'Additional x >= {settings.right_strip_start} strip and the fixed cross-shaped defect, with a {settings.mask_padding}-pixel detection/photometry margin. Candidate labels and background are unchanged.'
+    table.meta['snr_note'] = 'Aperture sum / sqrt(sum(background RMS^2 + positive signal / GAIN)); no correlated-noise correction.'
+    table.meta['score_note'] = 'Free elliptical Moffat proxy; two initialisations check solution stability, not model-family uncertainty or a confidence bound.'
     table.meta['area_note'] = 'Mean N/(S+N) over aperture pixels; not binary label-overlap area.'
     table.meta['flux_note'] = 'Raw signed aperture sum; neighbour model not subtracted. Recovered sources need validation.'
     # Read and validate inputs before replacing any previous output. This also
     # allows --scored-catalogue to point to results/sources.ecsv itself.
     output.mkdir(parents=True, exist_ok=True)
 
-    # Only catalogue quality decisions change. Preserve all original image
-    # products (including SOURCES, DETMASK and SATLEVEL) for downstream photometry.
-    shutil.copyfile(
-        products_dir / 'detection_products.fits',
-        output / 'detection_products.fits',
-    )
+    # Preserve image measurements and labels, but propagate the new masks to
+    # downstream photometry and its effective-area calculation.
+    with fits.open(products_dir / 'detection_products.fits') as hdul:
+        for name, value in [('BADMASK', raw_bad), ('DETMASK', detection_mask),
+                            ('ARTEFACT', artefact), ('BOUNDARY', boundary)]:
+            hdul[name].data = value.astype(np.uint8)
+        hdul.append(fits.ImageHDU(strip.astype(np.uint8), name='STRIPMASK'))
+        hdul.append(fits.ImageHDU(manual.astype(np.uint8), name='MANUALMASK'))
+        hdul.writeto(output / 'detection_products.fits', overwrite=True)
 
     # These plots are optional; remove stale ones if this run cannot regenerate
     # them. Only remove recognised plot names produced by this script.
@@ -347,6 +660,9 @@ def run(settings, scored_catalogue=None):
 
     save_diagnostics(diagnostics, output)
     table.write(output / 'sources.ecsv', overwrite=True)
+    table.write(output / 'sources.csv', format='ascii.csv', overwrite=True)
+    table[table['usable']].write(output / 'usable_sources.csv', format='ascii.csv', overwrite=True)
+    pair_audit.write(output / 'shared_light_pairs.ecsv', overwrite=True)
     table[recovered].write(output / 'recovered_sources.ecsv', overwrite=True)
     values = [0, 1e-6, 1e-5, .0001, .001, .003, .005, .01, .02, .03, .05, .1, .2]
     sweep = []
@@ -356,11 +672,13 @@ def run(settings, scored_catalogue=None):
     Table(rows=sweep, names=['both_limits', 'usable']).write(
         output / 'threshold_sweep.csv', format='ascii.csv', overwrite=True
     )
-    assert sweep[0][1] == int(table['strict_usable'].sum())
+    baseline = (table['strict_usable'] & ~table['image_quality_rejected']
+                & np.isfinite(table['aperture_snr']) & (table['aperture_snr'] >= settings.minimum_aperture_snr))
+    assert sweep[0][1] == int(baseline.sum())
     assert np.all(np.diff([n for _, n in sweep]) >= 0)
     assert np.array_equal(table['blended'], original['blended'])
-    assert np.all(table['usable'][table['strict_usable']])
-    assert not np.any(recovered & ~table['blended'])
+    assert np.all(table['usable'][baseline])
+    assert not np.any(recovered & ~table['reassessment_candidate'])
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.plot([v for v, n in sweep], [n for v, n in sweep], 'o-')
     ax.set_xscale('symlog', linthresh=1e-5)
@@ -369,8 +687,16 @@ def run(settings, scored_catalogue=None):
     ax.grid(alpha=.2)
     fig.tight_layout(); fig.savefig(output / 'threshold_sweep.png', dpi=160); plt.close(fig)
     detector.save_diagnostics(image, background, noise, artefact, boundary, saturated, table, output)
+    save_bright_review(residual, noise, table, output)
+    save_bright_review(residual, noise, table, output, recovered_only=True)
     summary = {'settings': asdict(settings), 'strict_usable': int(table['strict_usable'].sum()),
+               'baseline_after_snr_cut': int(baseline.sum()),
+               'low_aperture_snr': int(faint.sum()),
                'usable': int(table['usable'].sum()), 'recovered': int(recovered.sum()),
+               'masked_apertures': int(table['mask_rejected'].sum()),
+               'neighbour_core_rejected': int(table['neighbour_core_rejected'].sum()),
+               'shared_light_rejected': int(table['shared_light_rejected'].sum()),
+               'internal_multiple_peaks': int(table['internal_multiple_peaks'].sum()),
                'fit_status': dict(Counter(str(s) for s in table['model_status'])),
                'threshold_sweep': sweep,
                'source_catalogue_sha256': hashlib.sha256((products_dir / 'sources.ecsv').read_bytes()).hexdigest()}
@@ -385,5 +711,8 @@ if __name__ == '__main__':
     parser.add_argument('--area-limit', type=float, default=Settings.max_overlap_area_fraction)
     parser.add_argument('--flux-limit', type=float, default=Settings.max_overlap_flux_fraction)
     parser.add_argument('--scored-catalogue', type=Path)
+    parser.add_argument('--minimum-snr', type=float, default=Settings.minimum_aperture_snr)
+    parser.add_argument('--output', type=Path, help='Optional test-output directory; default overwrites results.')
     args = parser.parse_args()
-    run(Settings(max_overlap_area_fraction=args.area_limit, max_overlap_flux_fraction=args.flux_limit), args.scored_catalogue)
+    run(Settings(max_overlap_area_fraction=args.area_limit, max_overlap_flux_fraction=args.flux_limit,
+                 minimum_aperture_snr=args.minimum_snr), args.scored_catalogue, args.output)

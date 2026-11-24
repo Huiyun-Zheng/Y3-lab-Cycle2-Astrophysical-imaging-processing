@@ -1,7 +1,6 @@
 """Run circular Moffat classification and aperture photometry on neighbour-model results."""
 
 import sys
-
 sys.dont_write_bytecode = True
 
 import argparse
@@ -26,7 +25,7 @@ from circular_moffat import measure_psf_widths, select_psf_candidates
 CODE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = CODE_DIR.parent
 FITS_PATH = PROJECT_DIR / "Astro/Fits_Data/mosaic.fits"
-DETECTION_DIR = PROJECT_DIR / "neighbour_light_model/results"
+DETECTION_DIR = PROJECT_DIR / "simple_usable_review/results"
 OUTPUT_DIR = CODE_DIR / "results"
 
 MEASUREMENT_MAG_LIMIT = 22.0
@@ -128,11 +127,11 @@ def estimate_blank_scale(residual, rms, forbidden, row, dx, dy, rng):
     """
     # N.B. dx/dy here are the integer x/y offsets of all pixels inside the target aperture,
     # measured relative to its rounded centre. (different form dx/dy in the function aperture_offsets).
+    # rng is the random generator used to sample candidate apertures.
 
     height, width = residual.shape
     a = max(float(row["aperture_a_pix"]), float(row["aperture_b_pix"]))
-
-    half = int(np.ceil(a)) + 2
+    half = int(np.ceil(a)) + 2  # used for boundary chekcing
 
     # Store the normalised residual flux of each accepted aperture.
     # Also store its centre to avoid overlap with later apertures.
@@ -143,46 +142,80 @@ def estimate_blank_scale(residual, rms, forbidden, row, dx, dy, rng):
     used_radius = 500.0
     for search_radius in (500.0, 1000.0):
         used_radius = search_radius
+
         for attempt in range(4):
+            # Generate 256 random directions / distances around the target.
             theta = rng.uniform(0, 2 * np.pi, 256)
             distance = np.sqrt(rng.uniform((2 * a + 20) ** 2, search_radius**2, 256))
+
+            # Convert the random distances and angles into absolute x/y coordinates in the image.
+            # Round the coordinates to integers so that they can be used for imaging indexing.
             xs = np.rint(float(row["x"]) + distance * np.cos(theta)).astype(int)
             ys = np.rint(float(row["y"]) + distance * np.sin(theta)).astype(int)
+
+            # Check whether each candidate centre is far enough from all four image boundaries.
             good = (xs >= half) & (xs < width - half) & (ys >= half) & (ys < height - half)
-            xs, ys = xs[good], ys[good]
+            xs, ys = xs[good], ys[good]  # candidate centres
             if len(xs) == 0:
                 continue
+
             px, py = xs[:, None] + dx, ys[:, None] + dy
             clean = ~np.any(forbidden[py, px], axis=1)
+
             for x, y in zip(xs[clean], ys[clean]):
                 if accepted_centres:
                     centres = np.asarray(accepted_centres)
+
+                    # Calculate the distance from the current candidate to every previously accepted centre.
+                    # Reject the candidate if any centre is closer than twice the semi-major axis plus one pixel.
+                    # This conservatively prevents aperture overlap.
                     if np.any(np.hypot(centres[:, 0] - x, centres[:, 1] - y) < 2 * a + 1):
                         continue
+
+                # Add the individual pixel uncertainties in quadrature to estimate the uncertainty of the total aperture flux.
                 aperture_rms = np.sqrt(np.sum(rms[y + dy, x + dx].astype(float) ** 2))
+                # Divide the total residual flux by the aperture RMS to account for differences in local noise levels.
                 samples.append(float(np.sum(residual[y + dy, x + dx], dtype=float)) / aperture_rms)
                 accepted_centres.append((x, y))
+
                 if len(samples) >= BLANK_APERTURES:
                     break
+
             if len(samples) >= BLANK_APERTURES:
                 break
+
         if len(samples) >= MIN_BLANK_APERTURES:
             break
+
+    # If there are still too few blank apertures after searching both regions,
+    # do not estimate an empirical noise correction.
     if len(samples) < MIN_BLANK_APERTURES:
-        # Explicitly incomplete estimate; retain the object, mark the fallback.
         return 1.0, len(samples), np.nan, used_radius, "rms_only_fallback"
 
     _, median, scatter = sigma_clipped_stats(np.asarray(samples), sigma=3, maxiters=5)
+    # Set a lower limit of 1 so that the empirical correction can increase the uncertainty but cannot reduce it.
     return max(1.0, float(scatter)), len(samples), float(median), used_radius, "local_blank"
 
 
 def add_photometric_uncertainties(table, residual, rms, labels, mask, header):
-    """Background aperture scatter + source shot noise, with shared ZP separate."""
+    """
+    Calculate flux and magnitude uncertainties for selected sources.
+
+    Estimate background noise using nearby blank apertures and include
+    source shot noise based on the detector gain.
+
+    Convert flux uncertainties into magnitude uncertainties, including
+    the shared photometric zero-point uncertainty.
+    """
+    # mask here identifying invalid or excluded pixels.
+
     result = table.copy()
     gain = float(header["GAIN"])
-    zp_error = float(header.get("MAGZRR", 0.0))
-    if not np.isfinite(zp_error) or zp_error < 0:
-        raise ValueError("MAGZRR must be finite and nonnegative.")
+    zp_error = float(header["MAGZRR"])
+
+    # Identify pixels that cannot be used for blank apertures.
+    # Exclude masked pixels, invalid noise values, and detected sources
+    # with their masks expanded to cover nearby wings.
     forbidden = (
         mask
         | ~np.isfinite(residual)
@@ -190,6 +223,7 @@ def add_photometric_uncertainties(table, residual, rms, labels, mask, header):
         | (rms <= 0)
         | ndi.binary_dilation(labels > 0, iterations=3)
     )
+
     columns = [
         "flux_error_adu",
         "background_flux_error_adu",
@@ -208,6 +242,8 @@ def add_photometric_uncertainties(table, residual, rms, labels, mask, header):
     result["blank_aperture_count"] = np.zeros(len(result), int)
     result["uncertainty_status"] = np.full(len(result), "not_in_sample", dtype="U32")
     result["magnitude_error_zeropoint"] = np.full(len(result), zp_error)
+
+    # Create a reproducible random generator for blank-aperture sampling.
     rng = np.random.default_rng(RANDOM_SEED)
     chosen = np.flatnonzero(result["count_sample"])
     for number, i in enumerate(chosen):
@@ -215,6 +251,8 @@ def add_photometric_uncertainties(table, residual, rms, labels, mask, header):
         dx, dy = aperture_offsets(row)
         x, y = int(round(float(row["x"]))), int(round(float(row["y"])))
         px, py = x + dx, y + dy
+
+        # Check that the aperture contains pixels and lies completely within the image boundaries.
         if (
             len(dx) == 0
             or np.any(px < 0)
@@ -223,17 +261,24 @@ def add_photometric_uncertainties(table, residual, rms, labels, mask, header):
             or np.any(py >= residual.shape[0])
         ):
             raise ValueError(f'Invalid accepted aperture: ID {row["id"]}.')
+
+        # Calculate the background variance.
         variance = np.sum(rms[py, px].astype(float) ** 2)
         if not np.isfinite(variance) or variance <= 0 or np.any(mask[py, px]):
             raise ValueError(f'Invalid accepted-aperture noise/mask: ID {row["id"]}.')
-        scale, count, median, search_radius, status = estimate_blank_scale(
-            residual, rms, forbidden, row, dx, dy, rng
-        )
+
+        # Measure the scatter of nearby blank apertures to estimate the background noise correction factor.
+        scale, count, median, search_radius, status = estimate_blank_scale(residual, rms, forbidden, row, dx, dy, rng)
+
         flux = float(row["aperture_flux_adu"])
+        # Correct the background variance using the empirical blank-aperture noise scale.
         background_variance = variance * scale**2
+        # Estimate the shot-noise variance from the measured flux and detector gain, assuming Poisson photon statistics.
         source_variance = flux / gain
+        # Combine background and source variances to calculate the total random flux uncertainty.
         flux_error = np.sqrt(background_variance + source_variance)
         fractional_error = flux_error / flux
+
         result["flux_error_adu"][i] = flux_error
         result["background_flux_error_adu"][i] = np.sqrt(background_variance)
         result["source_flux_error_adu"][i] = np.sqrt(source_variance)
@@ -246,14 +291,14 @@ def add_photometric_uncertainties(table, residual, rms, labels, mask, header):
         random_mag_error = 2.5 / np.log(10) * fractional_error
         result["magnitude_error_random"][i] = random_mag_error
         result["magnitude_error_total"][i] = np.hypot(random_mag_error, zp_error)
-        result["magnitude_error_lower"][i] = np.hypot(
-            2.5 * np.log10(1 + fractional_error), zp_error
-        )
-        # A flux interval crossing zero has no finite faint magnitude endpoint.
+        # Calculate the lower magnitude uncertainty from the brighter flux endpoint, including zero-point uncertainty.
+        result["magnitude_error_lower"][i] = np.hypot(2.5 * np.log10(1 + fractional_error), zp_error)
+        # Calculate the upper magnitude uncertainty from the fainter flux endpoint.
+        # Only fo this when the lower flux endpoint is positive.
+        # Otherwise, leave the upper magnitude error as NaN.
         if fractional_error < 1:
-            result["magnitude_error_upper"][i] = np.hypot(
-                -2.5 * np.log10(1 - fractional_error), zp_error
-            )
+            result["magnitude_error_upper"][i] = np.hypot(-2.5 * np.log10(1 - fractional_error), zp_error)
+
         if (number + 1) % 1000 == 0:
             print(f"Aperture uncertainties: {number + 1}/{len(chosen)}", flush=True)
     result.meta["error_note"] = (
@@ -278,47 +323,84 @@ def add_photometric_uncertainties(table, residual, rms, labels, mask, header):
 
 
 def counts_from_magnitudes(magnitudes, limits):
-    """Strict N(<limit); nonpositive-flux draws have magnitude +infinity."""
-    return np.searchsorted(np.sort(magnitudes), limits, side="left")
+    """Count the number of galaxies brighter than each magnitude limit."""
+    counts = []
+
+    for limit in limits:
+        count = np.count_nonzero(magnitudes < limit)
+        counts.append(count)
+
+    return np.array(counts)
 
 
 def count_error_model(flux, flux_error, header, limits, observed_counts, draws=MC_DRAWS):
-    """Conditional flux-error propagation plus Poisson sampling covariance.
-
-    No Poisson resampling occurs in the photometric simulation, so adding the
-    Poisson covariance below does not add counting noise twice. Class labels,
-    detected membership and area are fixed. This is not a completeness model.
     """
+    Estimate the photometric and Poisson covariance of cumulative
+    galaxy number counts.
+
+    Use Monte Carlo simulations to propagate flux measurement errors
+    and the shared zero-point uncertainty into cumulative counts.
+    Calculate Poisson counting covariance separately.
+
+    The detected sources and survey area remain fixed.
+    """
+
     rng = np.random.default_rng(RANDOM_SEED + 1)
-    simulated = np.zeros((draws, len(limits)), dtype=float)
+    simulated = np.zeros((draws, len(limits)), dtype=float)  # An array to store cumulative counts from each simulation.
     zero_point = float(header["MAGZPT"])
     conversion = float(header["GAIN"]) / float(header["EXPTIME"])
-    zp_error = float(header.get("MAGZRR", 0.0))
+    zp_error = float(header["MAGZRR"])
+
     for trial in range(draws):
+        # Randomly vary each galaxy's flux using its measured uncertainty.
         draw_flux = flux + rng.normal(0, flux_error)
+
+        # Initially exclude nonpositive fluxes by assigning infinite magnitude.
         magnitude = np.full(len(flux), np.inf)
         positive = draw_flux > 0
-        # Exactly one ZP offset per realisation, shared by the full catalogue.
-        magnitude[positive] = (
-            zero_point + rng.normal(0, zp_error) - 2.5 * np.log10(draw_flux[positive] * conversion)
-        )
+
+        # Comvert positive simulated fluxes into magnitudes.
+        # Apply one shared zero-point offset to all galaxies in this draw
+        magnitude[positive] = (zero_point + rng.normal(0, zp_error) - 2.5 * np.log10(draw_flux[positive] * conversion))
         simulated[trial] = counts_from_magnitudes(magnitude, limits)
+
+    # Calculate how flux measurement errors affect the cumulative galaxy counts.
+    # The diagonal values give the count variances, while the off-diagonal
+    # values show how count fluctuations at different magnitude limits are related.
     photometric_covariance = np.cov(simulated, rowvar=False, ddof=1)
+
+    # Calculate the Poisson counting covariance from the observed galaxy counts.
+    # The diagonal values give the Poisson variances (equal to the counts),
+    # while the off-diagonal values account for galaxies shared between
+    # different cumulative magnitude limits.
     poisson_covariance = np.minimum.outer(observed_counts, observed_counts).astype(float)
+
     return simulated, poisson_covariance, photometric_covariance
 
 
 def descriptive_line_fit(x, y, covariance):
-    """Original OLS trend, with correlated data errors propagated to its slope.
-
-    This defines the same descriptive statistic as the old pipeline; it does
-    not require the curve to be exactly linear. Its error excludes model bias.
     """
+    Fit a straight line using ordinary least squares (OLS) and
+    propagate the data covariance into the slope uncertainty.
+
+    The covariance matrix is used to estimate the uncertainty
+    of the fitted slope, but not to determine the best-fit line.
+    """
+
     origin = float(np.mean(x))
+
+    # Build the design matrix for fitting a straight line.
+    # The first column represents the slope term,
+    # and the second column represents the intercept.
     design = np.column_stack([x - origin, np.ones(len(x))])
+    # Prepare the matrix used to calculate the OLS fit parameters.
     projection = np.linalg.pinv(design)
+    # Calculate the best-fit slope and centred intercept.
     parameters = projection @ y
+    # Propagate the covariance of the y values into the fitted parameters,
+    # accounting for correlations between data points.
     parameter_covariance = projection @ covariance @ projection.T
+
     return {
         "slope": float(parameters[0]),
         "intercept": float(parameters[1] - origin * parameters[0]),
@@ -327,7 +409,8 @@ def descriptive_line_fit(x, y, covariance):
 
 
 def plot_number_counts(table, area, output, fit_range, header):
-    """Correlated count errors; retain the previous OLS trend for comparison."""
+    """Calculate and plot cumulative galaxy number counts with uncertainties."""
+
     selected = table["count_sample"] & ~table["is_star"]
     limits, counts = cumulative_counts(table["magnitude"][selected], MAG_STEP)
     positive = counts > 0
@@ -337,17 +420,16 @@ def plot_number_counts(table, area, output, fit_range, header):
     if not np.all(np.isfinite(error)):
         raise ValueError("All count-sample sources need a finite flux error.")
     simulated, poisson, photometric = count_error_model(flux, error, header, limits, counts)
+    # Convert the count covariance into log-count covariance.
+    # This includes correlations between different magnitude limits.
     conversion = np.log(10) * counts
     covariance_log = (poisson + photometric) / np.outer(conversion, conversion)
     y = np.log10(counts / area)
     fit_mask = (limits >= fit_range[0]) & (limits <= fit_range[1])
-    if fit_range[0] >= fit_range[1] or fit_mask.sum() < 3:
-        raise ValueError("Fit range must contain at least three points.")
     fit_covariance = covariance_log[np.ix_(fit_mask, fit_mask)]
     fit = descriptive_line_fit(limits[fit_mask], y[fit_mask], fit_covariance)
 
-    # Exact central Poisson endpoints, with first-order photometric log variance
-    # added in quadrature. These combined bars are approximate, not exact Garwood.
+    # Calculate the lower and upper Poisson count limits for an approximately 68.27% confidence interval.
     alpha = 1 - 0.682689492
     lower = 0.5 * chi2.ppf(alpha / 2, 2 * counts)
     upper = 0.5 * chi2.ppf(1 - alpha / 2, 2 * (counts + 1))
@@ -375,6 +457,7 @@ def plot_number_counts(table, area, output, fit_range, header):
         "Approximate Poisson + flux/zero-point propagation; no completeness, classification or cosmic-variance errors."
     )
     results.write(output / "number_counts.ecsv", overwrite=True)
+
     fig, ax = plt.subplots(figsize=(8, 6), layout="constrained")
     ax.errorbar(
         limits,
@@ -408,12 +491,12 @@ def plot_number_counts(table, area, output, fit_range, header):
     )
     ax.set(
         xlabel="Limiting aperture magnitude, r",
-        ylabel=r"$\log_{10}[(N(<m)/A)/(1\,\mathrm{deg}^{-2})]$",
+        ylabel=r"$\log_{10}[(N(<m))/(1\,\mathrm{deg}^{-2})]$",
         title="Observed cumulative counts",
     )
     ax.grid(alpha=0.25)
     ax.legend(fontsize=8)
-    fig.savefig(output / "cumulative_number_counts.png", dpi=220)
+    fig.savefig(output / "cumulative_number_counts.png", dpi=300)
     plt.close(fig)
     return fit
 
@@ -469,7 +552,7 @@ def plot_width_magnitude(table, output):
     )
     ax.grid(alpha=0.25)
     ax.legend(fontsize=9)
-    fig.savefig(output / "moffat_width_vs_magnitude.png", dpi=220)
+    fig.savefig(output / "moffat_width_vs_magnitude.png", dpi=300)
     plt.close(fig)
 
 
@@ -480,6 +563,7 @@ def run_analysis(
     reference_labels=None,
 ):
     """Keep every input row; remove only star candidates from the count sample."""
+
     if not np.all(np.isfinite([measurement_mag_limit, classification_mag_limit, *fit_range])):
         raise ValueError("Magnitude limits and fit range must be finite.")
     if classification_mag_limit > measurement_mag_limit or fit_range[0] >= fit_range[1]:
@@ -537,7 +621,6 @@ def run_analysis(
     remaining = classified["count_sample"] & ~classified["is_star"]
     classified["remaining_sample"] = remaining
 
-    # Store useful provenance in the result table, instead of separate JSON files.
     classified.meta["input_sources_sha256"] = file_hash(sources_path)
     classified.meta["input_products_sha256"] = file_hash(products_path)
     classified.meta["measurement_mag_limit"] = float(measurement_mag_limit)

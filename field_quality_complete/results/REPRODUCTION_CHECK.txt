@@ -1,0 +1,15 @@
+aperture_review/sources.ecsv: column order differs; compare all columns by name
+aperture_review/sources.ecsv: 7038 rows; 79/79 columns exactly equal
+aperture_review/classified_sources.ecsv: column order differs; compare all columns by name
+aperture_review/classified_sources.ecsv: 7038 rows; 113/113 columns exactly equal
+aperture_review/number_counts.ecsv: 20 rows; 9/9 columns exactly equal
+Slope: 0.390710830611 +/- 0.013106682598
+field_quality_review/sources.ecsv: column order differs; compare all columns by name
+field_quality_review/sources.ecsv: 7038 rows; 93/93 columns exactly equal
+field_quality_review/classified_sources.ecsv: column order differs; compare all columns by name
+field_quality_review/classified_sources.ecsv: 7038 rows; 127/127 columns exactly equal
+field_quality_review/number_counts.ecsv: 20 rows; 9/9 columns exactly equal
+Slope: 0.377413856513 +/- 0.012454385829
+Compared all regenerated FITS image arrays against the reference.
+Checked 107 protected original files.
+PASS: full detection-to-counts reproduction.

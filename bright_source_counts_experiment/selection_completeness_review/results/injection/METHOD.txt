@@ -1,0 +1,12 @@
+720 trials: 40 disjoint locations x 3 profiles x 6 total magnitudes.
+Locations are paired across profiles/magnitudes; 40 trials per individual point.
+Existing real noise and neighbours retained; source shot noise added using header gain.
+Point Moffat FWHM=4 pix beta=3.5; exponential half-light radii=2,4 pix; axis ratio=0.7.
+Masks, background and smoothed-noise maps fixed; no final star/galaxy classification.
+Cutouts 129x129 pix; injected centres >72 pix from image border, within unmasked area.
+Distinct match: no existing peak within3 pix, new centroid and peak each within3 pix.
+Strict selection includes native aperture rule, neighbour cores, shared light and internal peaks.
+Does not include neighbour-model rescue or the earlier manual aperture modifications.
+Input is TOTAL magnitude; observed counts use APERTURE magnitude. Their difference is recorded.
+These conditional fractions are not full survey completeness and MUST NOT correct observed counts.
+Uncertainties are 68% Wilson binomial intervals; morphology mix and field variance not included.

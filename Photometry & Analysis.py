@@ -1,4 +1,4 @@
-"""Photometry, morphology plot and sumulative counts"""
+"""Photometry, morphology plot and cumulative counts"""
 
 import matplotlib
 matplotlib.use("Agg")
