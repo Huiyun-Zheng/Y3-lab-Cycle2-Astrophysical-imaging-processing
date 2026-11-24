@@ -1,0 +1,64 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: mag_min, datatype: float64}
+# - {name: mag_max, datatype: float64}
+# - {name: mag_mid, datatype: float64}
+# - {name: n_injected, datatype: int64}
+# - {name: n_unique_position_match, datatype: int64}
+# - {name: n_detection_recovered, datatype: int64}
+# - {name: n_photometry_recovered, datatype: int64}
+# - {name: n_near_original, datatype: int64}
+# - {name: n_no_position_candidate, datatype: int64}
+# - {name: unique_position_fraction, datatype: float64}
+# - {name: detection_fraction, datatype: float64}
+# - {name: photometry_fraction, datatype: float64}
+# - {name: median_delta_mag_usable, datatype: float64}
+# meta: !!omap
+# - {profile: exponential}
+# - {r_eff_px: 3}
+# - magnitude_edges: [15.5, 16.0, 16.5, 17.0, 17.5, 18.0, 18.5, 19.0, 19.5, 20.0, 20.5, 21.0, 21.5, 22.0, 22.5, 23.0, 23.5, 24.0, 24.5,
+#     25.0, 25.5, 26.0, 26.5]
+# - {mosaic: /Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/Astro/Fits_Data/mosaic.fits}
+# - {psf: /Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/codes2/codes_1105/outputs/psf_fit/combined_psf.fits}
+# - {source_poisson: false}
+# - {background: image}
+# - x_range: [640, 1056]
+# - y_range: [4032, 4448]
+# - {n_sources: 5}
+# - {n_frames: 10}
+# - {seed_per_bin: 42}
+# - {ellipticity: 0.3}
+# - {theta_deg: 30}
+# - {match_radius: 3}
+# - {min_separation: 0}
+# - {edge_margin: 25}
+# - {detector: source_detection_neighbour_refined/source_detection_improved.py}
+# - {refinement: source_detection_neighbour_refined/source_detection_neighbour_refined.py}
+# - {photometry: circular_moffat_analysis/photometry_analysis_simple.py per-source calibration and errors}
+# - {star_galaxy_classification: false}
+# - {commit: aff46babb9dd89d4a007f14f04d0571289ca7215}
+# schema: astropy-2.0
+mag_min mag_max mag_mid n_injected n_unique_position_match n_detection_recovered n_photometry_recovered n_near_original n_no_position_candidate unique_position_fraction detection_fraction photometry_fraction median_delta_mag_usable
+15.5 16.0 15.75 50 50 38 29 12 0 1.0 0.76 0.58 0.07233248889528276
+16.0 16.5 16.25 50 50 38 30 12 0 1.0 0.76 0.6 0.07440387718063768
+16.5 17.0 16.75 50 50 38 32 12 0 1.0 0.76 0.64 0.07892366080602642
+17.0 17.5 17.25 50 50 38 35 12 0 1.0 0.76 0.7 0.08123312168857666
+17.5 18.0 17.75 50 50 38 37 12 0 1.0 0.76 0.74 0.08403049956698894
+18.0 18.5 18.25 50 50 38 38 12 0 1.0 0.76 0.76 0.09112042011015298
+18.5 19.0 18.75 50 50 38 38 12 0 1.0 0.76 0.76 0.09783255882771158
+19.0 19.5 19.25 50 50 38 37 12 0 1.0 0.76 0.74 0.10334057972225708
+19.5 20.0 19.75 50 50 38 37 12 0 1.0 0.76 0.74 0.11025758655543072
+20.0 20.5 20.25 50 50 38 37 12 0 1.0 0.76 0.74 0.12018856493996566
+20.5 21.0 20.75 50 50 38 37 12 0 1.0 0.76 0.74 0.1346464410376953
+21.0 21.5 21.25 50 49 38 37 12 1 0.98 0.76 0.74 0.15590350225827976
+21.5 22.0 21.75 50 47 37 35 12 3 0.94 0.74 0.7 0.19920243041753238
+22.0 22.5 22.25 50 48 38 36 12 2 0.96 0.76 0.72 0.2441662250104848
+22.5 23.0 22.75 50 44 35 35 12 6 0.88 0.7 0.7 0.33995119993048206
+23.0 23.5 23.25 50 23 19 19 12 27 0.46 0.38 0.38 0.4647612819655542
+23.5 24.0 23.75 50 2 2 2 12 48 0.04 0.04 0.04 0.49929772845533016
+24.0 24.5 24.25 50 1 1 1 12 49 0.02 0.02 0.02 0.2047689849560932
+24.5 25.0 24.75 50 0 0 0 12 50 0.0 0.0 0.0 nan
+25.0 25.5 25.25 50 0 0 0 12 50 0.0 0.0 0.0 nan
+25.5 26.0 25.75 50 0 0 0 12 50 0.0 0.0 0.0 nan
+26.0 26.5 26.25 50 0 0 0 12 50 0.0 0.0 0.0 nan

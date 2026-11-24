@@ -1,0 +1,70 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: id, datatype: int64}
+# - {name: segment_id, datatype: int64}
+# - {name: parent_id, datatype: int64}
+# - {name: x, datatype: float64}
+# - {name: y, datatype: float64}
+# - {name: peak_x, datatype: int64}
+# - {name: peak_y, datatype: int64}
+# - {name: peak_adu, datatype: float64}
+# - {name: peak_detection_snr, datatype: float64}
+# - {name: n_pixels, datatype: int64}
+# - {name: segment_flux_adu, datatype: float64}
+# - {name: aperture_shape, datatype: string}
+# - {name: aperture_a_pix, datatype: float64}
+# - {name: aperture_b_pix, datatype: float64}
+# - {name: aperture_theta_deg, datatype: float64}
+# - {name: aperture_flux_adu, datatype: float64}
+# - {name: major_sigma_pix, datatype: float64}
+# - {name: minor_sigma_pix, datatype: float64}
+# - {name: elongation, datatype: float64}
+# - {name: near_artefact, datatype: bool}
+# - {name: near_boundary, datatype: bool}
+# - {name: blended, datatype: bool}
+# - {name: aperture_contaminated, datatype: bool}
+# - {name: aperture_capped, datatype: bool}
+# - {name: usable, datatype: bool}
+# - {name: flags, datatype: string}
+# - {name: mask_rejected, datatype: bool}
+# - {name: neighbour_core, datatype: bool}
+# - {name: internal_double, datatype: bool}
+# - {name: shared_light, datatype: bool}
+# - {name: close_pair_bridge, datatype: bool}
+# - {name: sky_unreliable, datatype: bool}
+# - {name: label_area_fraction, datatype: float64}
+# - {name: label_light_fraction, datatype: float64}
+# - {name: aperture_snr, datatype: float64}
+# - {name: measured_aperture_flux_adu, datatype: float64}
+# - {name: original_usable, datatype: bool}
+# - {name: original_flags, datatype: string}
+# - {name: original_aperture_flux_adu, datatype: float64}
+# - {name: recovered, datatype: bool}
+# - {name: newly_excluded, datatype: bool}
+# meta: !!omap
+# - {description: Unclassified source candidates; usable is a conservative photometry-quality flag.}
+# - {flux_note: Signed observed ADU in unchanged binary apertures; no neighbour subtraction. Positive light is used only for quality ratios
+#     and approximate shot noise.}
+# - {input_catalogue_sha256: 34f295baf0715278c5ce7890d470cc076f8ebf951a610baf103548808d01873e}
+# - {review: Pixel-based quality review; no profile fitting. Original quality columns remain historical; use usable and flags for current
+#     selection.}
+# - {snr_note: Independent-pixel RMS plus positive signal/GAIN; correlated noise is not calibrated.}
+# - {limits: label area 0.03; label light 0.02; shared light 0.02; SNR 5.0; close distance 1.25; bridge SNR 3.0; pair peak SNR 5.0}
+# schema: astropy-2.0
+id segment_id parent_id x y peak_x peak_y peak_adu peak_detection_snr n_pixels segment_flux_adu aperture_shape aperture_a_pix aperture_b_pix aperture_theta_deg aperture_flux_adu major_sigma_pix minor_sigma_pix elongation near_artefact near_boundary blended aperture_contaminated aperture_capped usable flags mask_rejected neighbour_core internal_double shared_light close_pair_bridge sky_unreliable label_area_fraction label_light_fraction aperture_snr measured_aperture_flux_adu original_usable original_flags original_aperture_flux_adu recovered newly_excluded
+3 58 189 284.6123743180554 213.68749019512498 285 214 3721.0498046875 83.34488677978516 334 17360.80859375 circle 10.350472498015698 10.350472498015698 0.0 16938.748046875 4.140188999206279 2.985824660111993 1.3866149122939415 False False True False False True none False False False False False False 0.0 0.0 90.41912638376382 16938.748046875 False blended 16938.748046875 True False
+4 59 189 263.351711640289 219.6910770451836 263 220 3669.007568359375 70.0621337890625 297 15118.7939453125 circle 9.337265619389756 9.337265619389756 0.0 14689.1396484375 3.7349062477559025 3.1439198464204154 1.1879775662882655 False False True False False True none False False False False False False 0.0 0.0 85.95663376669361 14689.1396484375 False blended 14689.1396484375 True False
+10 49 149 354.625197447198 191.19868764669044 354 192 3554.896484375 38.425254821777344 236 7442.23291015625 circle 8.710581567757753 8.710581567757753 0.0 7216.17578125 3.484232627103101 3.142050472598919 1.1089040922443074 False False True False False True none False False False False False False 0.0 0.0 49.02610498425316 7216.17578125 False blended 7216.17578125 True False
+12 25 73 346.9694444813503 90.43702916078131 347 93 3550.0 34.44826126098633 197 4793.7431640625 ellipse 11.183072758271173 6.558189043083314 80.67422840551103 4606.9453125 4.473229103308469 2.623275617233326 1.7052074413843799 False False True False False True none False False False False False False 0.0 0.0 34.8391191906704 4606.9453125 False blended 4606.9453125 True False
+17 23 67 72.03840630074092 80.81822973705405 68 81 3526.0 32.39407730102539 303 6978.22265625 ellipse 14.22200400856072 7.786608884396129 -176.96326529015116 6880.5341796875 5.688801603424288 3.1146435537584516 1.826469547874777 False False True False False True none False False False False False False 0.0 0.0 42.98452221952056 6880.5341796875 False blended 6880.5341796875 True False
+20 35 113 186.1663424483571 122.95436717993293 187 123 3506.0009765625 23.93242645263672 95 2554.464599609375 circle 5.720706155356414 5.720706155356414 0.0 2541.3603515625 2.2882824621425657 2.0819805007204164 1.0990892860671673 False False True True False True none False False False False False False 0.0196078431372549 0.008829925209283829 27.932567674950747 2541.3603515625 False blended|aperture_contaminated nan True False
+24 54 170 399.8497552754286 185.17608227734263 401 186 3502.003662109375 20.314699172973633 101 2293.775390625 ellipse 7.21757451063183 5.017239266072982 -167.31797366359712 2209.01953125 2.887029804252732 2.006895706429193 1.4385549757289253 False True False False False True none False False False False False False 0.0 0.0 22.52863913998518 2209.01953125 False near_boundary 2209.01953125 True False
+41 50 149 345.6900966862268 177.05438420168932 345 177 3472.34619140625 15.561321258544922 158 3026.704345703125 circle 8.396936590204104 8.396936590204104 0.0 3196.134765625 3.358774636081642 3.003572039704486 1.118260055587714 False False True True False True none False False False False False False 0.022026431718061675 0.015139568597078323 23.211787017646873 3196.134765625 False blended|aperture_contaminated nan True False
+48 11 44 69.44226275474983 54.98232429464738 69 56 3468.000244140625 11.640053749084473 65 1129.935791015625 circle 5.281813678187186 5.281813678187186 0.0 1188.026123046875 2.1127254712748744 1.8991727785219377 1.1124451104017705 False False True False False True none False False False False False False 0.0 0.0 15.190385738508878 1188.026123046875 False blended 1188.026123046875 True False
+53 21 65 309.4466913006361 83.53442630950784 310 84 3467.0 13.044431686401367 86 1623.94970703125 circle 6.426016519451812 6.426016519451812 0.0 1686.927978515625 2.5704066077807246 2.075607428768821 1.2383876508407958 False False True True False True none False False False False False False 0.024193548387096774 0.013459821231663227 17.773848831870897 1686.927978515625 False blended|aperture_contaminated nan True False
+59 24 67 86.52248793731054 92.53078578816692 85 93 3462.007080078125 9.934832572937012 61 1019.45361328125 ellipse 6.196606259145458 4.169228544741119 -155.49969096499606 1068.837646484375 2.4786425036581834 1.667691417896448 1.4862716669638039 False False True False False True none False False False False False False 0.0 0.0 13.672433824820194 1068.837646484375 False blended 1068.837646484375 True False
+61 2 5 265.8036904562311 11.158543757871097 267 12 3462.0 10.885396003723145 51 802.812255859375 ellipse 5.287163931478313 3.547242132453653 -175.8801914168522 846.782958984375 2.114865572591325 1.4188968529814612 1.490499868364256 False True False False False True none False False False False False False 0.0 0.0 13.139362577044068 846.782958984375 False near_boundary 846.782958984375 True False
+65 26 73 360.4906705137223 84.52043205870834 360 85 3460.0 10.251948356628418 71 1091.986328125 circle 5.755767502947789 5.755767502947789 0.0 1263.417236328125 2.3023070011791154 1.973044230896536 1.1668805823643218 False False True False False True none False False False False False False 0.0 0.0 14.12356988124473 1263.417236328125 False blended 1263.417236328125 True False
+66 12 44 56.40862450532963 59.4535393666846 57 59 3459.0 11.432724952697754 206 3534.745361328125 circle 10.189349608890838 10.189349608890838 0.0 3960.871337890625 4.0757398435563355 3.498994578091821 1.1648317116796 False False True True False True none False False False False False False 0.012232415902140673 0.009893479757010937 26.19683407314384 3960.871337890625 False blended|aperture_contaminated nan True False
+86 51 149 341.75691878750763 164.60670765734957 342 164 3447.025390625 7.745893955230713 50 666.455810546875 circle 5.760885531421367 5.760885531421367 0.0 848.8330078125 2.304354212568547 1.6873145529755156 1.3656933193072418 False False True True False True none False False False False False False 0.009708737864077669 0.019246423617005348 9.332020473964452 848.8330078125 False blended|aperture_contaminated nan True False

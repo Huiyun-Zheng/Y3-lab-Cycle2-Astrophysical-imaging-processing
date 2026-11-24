@@ -1,0 +1,20 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: group, datatype: string}
+# - {name: n_injected, datatype: int64}
+# - {name: n_recovered, datatype: int64}
+# - {name: n_usable, datatype: int64}
+# - {name: n_clean, datatype: int64}
+# - {name: detection_fraction, datatype: float64}
+# - {name: usable_fraction, datatype: float64}
+# - {name: clean_fraction, datatype: float64}
+# meta: !!omap
+# - {recovered: 'Mutually unique positional counterpart, with no nearby baseline detection; near_injected is included, shared and ambiguous
+#     detections are excluded.'}
+# - {usable: 'Recovered and detector quality passed, with positive finite flux'}
+# - {clean: Usable and status=matched; excludes nearby injected sources}
+# - {note: No input/output flux-agreement cut or chance-match correction}
+# schema: astropy-2.0
+group n_injected n_recovered n_usable n_clean detection_fraction usable_fraction clean_fraction
+single 50 30 30 30 0.6 0.6 0.6

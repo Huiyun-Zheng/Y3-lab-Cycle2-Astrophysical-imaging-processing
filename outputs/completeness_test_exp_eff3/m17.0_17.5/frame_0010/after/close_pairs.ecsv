@@ -1,0 +1,14 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: id1, datatype: int64}
+# - {name: id2, datatype: int64}
+# - {name: relative_distance, datatype: float64}
+# - {name: minimum_bridge_snr, datatype: float64}
+# - {name: rejected, datatype: bool}
+# schema: astropy-2.0
+id1 id2 relative_distance minimum_bridge_snr rejected
+47 62 0.6844589417208273 -0.42701876163482666 False
+17 58 1.1143690835268973 0.19485698640346527 False
+40 50 0.770487968513122 0.613053560256958 False
+14 61 1.1531616415734833 -0.6966241002082825 False

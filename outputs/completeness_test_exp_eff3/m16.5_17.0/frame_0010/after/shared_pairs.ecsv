@@ -1,0 +1,14 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: id1, datatype: int64}
+# - {name: id2, datatype: int64}
+# - {name: shared_fraction1, datatype: float64}
+# - {name: shared_fraction2, datatype: float64}
+# - {name: rejected, datatype: bool}
+# schema: astropy-2.0
+id1 id2 shared_fraction1 shared_fraction2 rejected
+47 62 0.5768924302788845 0.12242137301318905 True
+21 70 0.024203307785397338 0.06369426751592357 False
+40 50 0.10713944983304181 0.052344086403366644 False
+37 81 0.014216470688427307 0.0481024393796194 False

@@ -1,0 +1,66 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: mag_min, datatype: float64}
+# - {name: mag_max, datatype: float64}
+# - {name: mag_mid, datatype: float64}
+# - {name: n_injected, datatype: int64}
+# - {name: n_unique_position_match, datatype: int64}
+# - {name: n_near_original, datatype: int64}
+# - {name: n_detection_recovered, datatype: int64}
+# - {name: n_photometry_recovered, datatype: int64}
+# - {name: detection_fraction, datatype: float64}
+# - {name: photometry_fraction, datatype: float64}
+# - {name: flux_ratio_q16, datatype: float64}
+# - {name: flux_ratio_median, datatype: float64}
+# - {name: flux_ratio_q84, datatype: float64}
+# meta: !!omap
+# - {profile: deVau}
+# - {r_eff_px: 1}
+# - magnitude_edges: [15.5, 16.0, 16.5, 17.0, 17.5, 18.0, 18.5, 19.0, 19.5, 20.0, 20.5, 21.0, 21.5, 22.0, 22.5, 23.0, 23.5, 24.0, 24.5,
+#     25.0, 25.5, 26.0, 26.5]
+# - {mosaic: /Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/Astro/Fits_Data/mosaic.fits}
+# - {psf: /Users/wendy/Desktop/Imperial/Year 3/Lab/Cycle 2 Astronomical Data/Y3-lab-Cycle2-Astrophysical-imaging-processing/codes2/codes_1105/outputs/psf_fit/combined_psf.fits}
+# - {source_poisson: false}
+# - {background: image}
+# - x_range: [640, 1056]
+# - y_range: [4032, 4448]
+# - {n_sources: 5}
+# - {n_frames: 10}
+# - {seed_per_bin: 42}
+# - {ellipticity: 0.3}
+# - {theta_deg: 30}
+# - {match_radius: 3}
+# - {min_separation: 0}
+# - {edge_margin: 25}
+# - {detector: source_detection_neighbour_refined/source_detection_improved.py}
+# - {refinement: source_detection_neighbour_refined/source_detection_neighbour_refined.py}
+# - {photometry: circular_moffat_analysis/photometry_analysis_simple.py per-source calibration and errors}
+# - {star_galaxy_classification: false}
+# - {commit: aff46babb9dd89d4a007f14f04d0571289ca7215}
+# - {source_rendering: "3x3 Gauss\u2013Legendre integration and 128x128 core subpixels before PSF convolution"}
+# - {flux_ratio_note: Measured aperture flux divided by analytical injected model total flux}
+# schema: astropy-2.0
+mag_min mag_max mag_mid n_injected n_unique_position_match n_near_original n_detection_recovered n_photometry_recovered detection_fraction photometry_fraction flux_ratio_q16 flux_ratio_median flux_ratio_q84
+15.5 16.0 15.75 50 12 13 10 8 0.2 0.16 0.9217851928403249 0.9231091808828122 0.9303367087842588
+16.0 16.5 16.25 50 50 13 37 27 0.74 0.54 0.9176198152547252 0.9206237902611749 0.9238003154457789
+16.5 17.0 16.75 50 50 13 37 29 0.74 0.58 0.9130429195753383 0.9155019194755373 0.9207240660078241
+17.0 17.5 17.25 50 50 13 37 31 0.74 0.62 0.9066867271846104 0.9106688221287991 0.9199008036439431
+17.5 18.0 17.75 50 50 13 37 36 0.74 0.72 0.9001501558888712 0.905051954266701 0.9171837418606007
+18.0 18.5 18.25 50 50 13 37 37 0.74 0.74 0.8928784760559186 0.8983390141429568 0.9105201339670043
+18.5 19.0 18.75 50 50 13 37 36 0.74 0.72 0.8797618275455246 0.8876956480514951 0.9058343468450709
+19.0 19.5 19.25 50 50 13 37 36 0.74 0.72 0.8665590606954163 0.8808787657323306 0.8983967210381321
+19.5 20.0 19.75 50 50 13 37 36 0.74 0.72 0.8521917905631914 0.8754571457485112 0.8980023412359209
+20.0 20.5 20.25 50 50 13 37 36 0.74 0.72 0.8310023421494526 0.8618219507793787 0.8857830044190567
+20.5 21.0 20.75 50 50 13 37 37 0.74 0.74 0.8187668072253499 0.8490735071681546 0.8839522917939284
+21.0 21.5 21.25 50 50 13 37 37 0.74 0.74 0.778387613940499 0.8235501892038222 0.8813778251327797
+21.5 22.0 21.75 50 49 13 36 35 0.72 0.7 0.746954210581564 0.7985183521206696 0.8914095889621914
+22.0 22.5 22.25 50 48 13 37 36 0.74 0.72 0.7018135770716487 0.7603976885682387 0.8550800075557158
+22.5 23.0 22.75 50 46 13 36 35 0.72 0.7 0.6213550422911746 0.7137174333635453 0.8358993794389975
+23.0 23.5 23.25 50 41 13 32 32 0.64 0.64 0.5542152097861865 0.6528498455108878 0.8423530615481065
+23.5 24.0 23.75 50 18 13 15 15 0.3 0.3 0.5223151821143176 0.6324523289012683 0.7605484103201563
+24.0 24.5 24.25 50 1 13 1 1 0.02 0.02 0.9198264023690693 0.9198264023690693 0.9198264023690693
+24.5 25.0 24.75 50 1 13 1 1 0.02 0.02 1.0774286267188737 1.0774286267188737 1.0774286267188737
+25.0 25.5 25.25 50 0 13 0 0 0.0 0.0 nan nan nan
+25.5 26.0 25.75 50 0 13 0 0 0.0 0.0 nan nan nan
+26.0 26.5 26.25 50 0 13 0 0 0.0 0.0 nan nan nan

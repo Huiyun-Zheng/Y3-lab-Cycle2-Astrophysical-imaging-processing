@@ -1,0 +1,76 @@
+{
+  "n_trials": 220,
+  "n_injections": 1100,
+  "n_unique_injection_positions": 50,
+  "control_baseline_candidates": 85,
+  "control_negative_image_candidates": 0,
+  "control_artifact_pixels": 0,
+  "n_injection_positions_masked_in_control": 0,
+  "bright_comparison_mag_range": [
+    19.0,
+    22.5
+  ],
+  "n_bright_trials_per_position": 7,
+  "n_positions_with_all_bright_position_matches": 47,
+  "n_positions_with_no_bright_detection_recovery": 12,
+  "n_positions_always_near_original_in_bright_range": 12,
+  "n_positions_without_bright_photometry_and_not_near_original": 1,
+  "n_baseline_centroids_seen_in_at_least_90_percent_of_frames": 79,
+  "n_after_detections_without_nearby_input_or_baseline_centroid": 32,
+  "n_recurrent_new_positions_in_multiple_frame_layouts_outside_r90_plus3": 2,
+  "photometry_stage": "Neighbour-refined acceptance and measured aperture flux, then Simple Analysis calibration and uncertainty",
+  "star_galaxy_classification": false,
+  "comparison_to_previous": {
+    "15.5-16.0": {
+      "n_injected": 50,
+      "baseline_detection_count": 35,
+      "refined_detection_count": 38,
+      "baseline_photometry_count": 3,
+      "refined_photometry_count": 29
+    },
+    "19.0-22.5": {
+      "n_injected": 350,
+      "baseline_detection_count": 245,
+      "refined_detection_count": 265,
+      "baseline_photometry_count": 179,
+      "refined_photometry_count": 256
+    },
+    "22.5-23.0": {
+      "n_injected": 50,
+      "baseline_detection_count": 35,
+      "refined_detection_count": 35,
+      "baseline_photometry_count": 29,
+      "refined_photometry_count": 35
+    },
+    "23.0-23.5": {
+      "n_injected": 50,
+      "baseline_detection_count": 30,
+      "refined_detection_count": 19,
+      "baseline_photometry_count": 27,
+      "refined_photometry_count": 19
+    },
+    "23.5-24.0": {
+      "n_injected": 50,
+      "baseline_detection_count": 9,
+      "refined_detection_count": 2,
+      "baseline_photometry_count": 8,
+      "refined_photometry_count": 2
+    },
+    "24.5-26.5": {
+      "n_injected": 200,
+      "baseline_detection_count": 4,
+      "refined_detection_count": 0,
+      "baseline_photometry_count": 4,
+      "refined_photometry_count": 0
+    }
+  },
+  "previously_rejected_sites_with_refined_photometry": 5,
+  "recurrent_threshold_peak": {
+    "candidate_x_mosaic": 859.3435953729783,
+    "candidate_y_mosaic": 4203.524324048452,
+    "baseline_snr": 5.987915515899658,
+    "threshold": 6.0,
+    "detections": 5,
+    "existing_sky_truth": "unknown"
+  }
+}

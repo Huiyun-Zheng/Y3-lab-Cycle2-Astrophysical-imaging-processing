@@ -1,0 +1,11 @@
+Candidates: 85
+Original usable: 66
+Retained original: 66
+Recovered: 12
+Newly excluded: 0
+Final usable: 78
+Top 100 by peak, usable: 66 -> 78
+Reasons among newly excluded (can overlap): Counter()
+Original reasons among recovered: Counter({'blended': 6, 'blended|aperture_contaminated': 4, 'near_boundary': 2})
+Input SHA256: 6f1725e798f6f5da8dbc9e3aa3576931087246fb21e3028c27f9e8e1bd9dfdc3
+Settings: label area 0.03; label light 0.02; shared light 0.02; SNR 5.0; close distance 1.25; bridge SNR 3.0; pair peak SNR 5.0

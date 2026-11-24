@@ -1,0 +1,30 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: frame_id, datatype: int64}
+# - {name: injected_id, datatype: int64}
+# - {name: x_mosaic, datatype: float64}
+# - {name: y_mosaic, datatype: float64}
+# - {name: nearest_baseline_px, datatype: float64}
+# - {name: n_bright, datatype: int64}
+# - {name: n_bright_position, datatype: int64}
+# - {name: n_bright_detection, datatype: int64}
+# - {name: n_bright_photometry, datatype: int64}
+# - {name: n_bright_near_original, datatype: int64}
+# - {name: bright_common_status, datatype: string}
+# - {name: bright_common_detection_flags, datatype: string}
+# - {name: baseline_n_bright_photometry, datatype: int64}
+# meta: !!omap
+# - {coordinates: 'Zero-based full mosaic, x then y'}
+# - bright_mag_range: [19.0, 22.5]
+# - transition_mag_range: [23.0, 24.0]
+# - very_faint_mag_range: [24.5, 26.5]
+# - {note: These five sites had zero baseline usable photometry in each of the seven comparison bins.}
+# - mag_range: [19.0, 22.5]
+# schema: astropy-2.0
+frame_id injected_id x_mosaic y_mosaic nearest_baseline_px n_bright n_bright_position n_bright_detection n_bright_photometry n_bright_near_original bright_common_status bright_common_detection_flags baseline_n_bright_photometry
+2 5 990.9892092826021 4341.109976431923 19.257977082476838 7 7 7 7 0 matched none 0
+4 1 958.7389904863327 4198.429608346014 21.885281247106878 7 7 7 7 0 matched none 0
+5 1 908.9670810535222 4228.950115242244 22.922243780598226 7 7 7 7 0 matched none 0
+8 1 926.6649190430335 4221.016948282483 24.769245540569486 7 7 7 7 0 matched none 0
+8 3 994.4498747385022 4223.358345789268 16.99261418562013 7 7 7 7 0 matched none 0

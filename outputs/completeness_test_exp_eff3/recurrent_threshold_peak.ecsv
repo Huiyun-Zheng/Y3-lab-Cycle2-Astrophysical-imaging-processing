@@ -1,0 +1,22 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: mag_bin, datatype: string}
+# - {name: frame_id, datatype: int64}
+# - {name: peak_x_mosaic, datatype: int64}
+# - {name: peak_y_mosaic, datatype: int64}
+# - {name: original_snr_at_after_peak, datatype: float64}
+# - {name: after_max_detection_snr, datatype: float64}
+# - {name: original_smoothed_rms, datatype: float64}
+# - {name: after_smoothed_rms, datatype: float64}
+# - {name: injected_signal_at_peak_adu, datatype: float64}
+# meta: !!omap
+# - {detection_threshold: 6.0}
+# - {note: The peak maximizes the smoothed detection SNR within the matched segment. Its location can differ from the maximum raw pixel.}
+# schema: astropy-2.0
+mag_bin frame_id peak_x_mosaic peak_y_mosaic original_snr_at_after_peak after_max_detection_snr original_smoothed_rms after_smoothed_rms injected_signal_at_peak_adu
+m16.5_17.0 10 862 4203 5.987915515899658 6.318331241607666 2.8781213760375977 3.0527663230895996 2.4677036724103187
+m17.0_17.5 10 862 4203 5.987915515899658 6.175126075744629 2.8781213760375977 3.010890483856201 1.5570157561080322
+m17.5_18.0 10 862 4203 5.987915515899658 6.058986186981201 2.8781213760375977 2.973140239715576 0.9824105267877438
+m19.5_20.0 4 862 4203 5.987915515899658 6.010388374328613 2.8781213760375977 2.876614809036255 1.542777569440547e-14
+m20.0_20.5 4 862 4203 5.987915515899658 6.0007171630859375 2.8781213760375977 2.8770108222961426 1.312019647375804e-14
