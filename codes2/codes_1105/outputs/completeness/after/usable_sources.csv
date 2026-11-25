@@ -1,2 +1,0 @@
-id,segment_id,parent_id,x,y,peak_x,peak_y,peak_adu,peak_detection_snr,n_pixels,segment_flux_adu,aperture_shape,aperture_a_pix,aperture_b_pix,aperture_theta_deg,aperture_flux_adu,major_sigma_pix,minor_sigma_pix,elongation,near_artefact,near_boundary,blended,aperture_contaminated,aperture_capped,usable,flags
-1,1,85,99.33446145658557,99.27567900296806,99,99,3776.85205078125,88.79865264892578,764,40232.421875,circle,14.635170849202792,14.635170849202792,0.0,38778.84375,5.854068339681117,4.870386819780369,1.20197194931328,False,False,False,False,False,True,none

@@ -25,3 +25,13 @@
 # Finder metadata and OneDrive-renamed duplicate output directory.
 .DS_Store
 /outputs-Lynn的MacBook Air/
+
+# Generated experiment outputs stay local. Already tracked files must also
+# be removed from the index before these rules can apply to them.
+/outputs/
+/codes2/codes_1105/outputs/
+/completeness_current_pipeline/results/
+
+# Python runtime caches.
+__pycache__/
+*.py[cod]

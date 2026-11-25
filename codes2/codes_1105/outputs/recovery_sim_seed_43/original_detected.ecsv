@@ -1,8 +1,0 @@
-# %ECSV 1.0
-# ---
-# datatype:
-# - {name: frame_id, datatype: int64}
-# - {name: x_local, datatype: float64}
-# - {name: y_local, datatype: float64}
-# schema: astropy-2.0
-frame_id x_local y_local
