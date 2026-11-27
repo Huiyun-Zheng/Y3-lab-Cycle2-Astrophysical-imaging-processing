@@ -22,10 +22,6 @@
 /source_detection_neighbour_refined/results/detection_products.fits
 /source_detection_neighbour_refined/results_before_refinement/detection_products.fits
 
-# Finder metadata and OneDrive-renamed duplicate output directory.
-.DS_Store
-/outputs-Lynn的MacBook Air/
-
 # Generated experiment outputs stay local. Already tracked files must also
 # be removed from the index before these rules can apply to them.
 /outputs/
@@ -35,3 +31,5 @@
 # Python runtime caches.
 __pycache__/
 *.py[cod]
+
+*.pdf

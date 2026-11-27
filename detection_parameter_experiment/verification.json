@@ -1,9 +1,0 @@
-{
-  "original_files_checked": 35,
-  "original_files_changed": [],
-  "all_declared_variants_completed": true,
-  "negative_ratio_note": "Raw negative detections / raw positive candidates; NOT a calibrated contamination fraction.",
-  "matching_note": "3-pixel positional comparison is diagnostic; centroid shifts/deblending can count as new.",
-  "slope_note": "Cumulative slopes are descriptive and correlated; no completeness calibration.",
-  "detector_function_AST_identical_for_all_nine_variants": true
-}

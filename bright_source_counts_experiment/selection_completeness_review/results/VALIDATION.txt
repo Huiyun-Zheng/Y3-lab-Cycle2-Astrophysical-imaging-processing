@@ -1,7 +1,0 @@
-PASS: original project hashes and field-review input catalogue unchanged.
-PASS: positions/apertures/finite fluxes unchanged; all earlier usable sources retained.
-PASS: exactly two new sources pass empirical-error, mask, model and neighbour criteria.
-PASS: old classifications, reference stars and measured uncertainties unchanged.
-PASS: final counts match catalogue and use the same area and 19--23 interval.
-PASS: 720 injection trials, nested stage outcomes and positive unit-flux centred models.
-No injection recovery fractions were used as weights or to alter observed counts.

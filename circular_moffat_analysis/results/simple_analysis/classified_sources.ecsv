@@ -90,11 +90,13 @@
 # - {calibration_assumption: MAGZPT refers to electrons/second; header GAIN used as effective gain.}
 # - {mc_draws: 2000}
 # - {random_seed: 20261118}
-# - {descriptive_slope: 0.3854727521546245}
-# - fit_range: [19.0, 23.0]
-# - {descriptive_slope_error: 0.0014261394963705446}
-# - {slope_error_note: 'Unweighted np.polyfit(degree=1, cov=True); errors are square roots of its scaled covariance diagonal. Formal line-fit
-#     errors only; count correlations and systematic uncertainties are not included.'}
+# - {descriptive_slope: 0.3803405834271075}
+# - fit_range: [18.5, 22.0]
+# - {descriptive_slope_error: 0.017651668169222007}
+# - {slope_error_note: 'Observed unweighted np.polyfit(degree=1); parameter errors are the sample standard deviations (ddof=1) of fits
+#     to Monte Carlo log-density curves at the same fit points. Includes Poisson, flux and shared zero-point perturbations, preserving
+#     cumulative-count correlations. Trials with nonpositive counts at any fit point are skipped and recorded. No completeness, classification
+#     or cosmic-variance errors.'}
 # schema: astropy-2.0
 id segment_id parent_id x y peak_x peak_y peak_adu peak_detection_snr n_pixels segment_flux_adu aperture_shape aperture_a_pix aperture_b_pix aperture_theta_deg aperture_flux_adu major_sigma_pix minor_sigma_pix elongation near_artefact near_boundary blended aperture_contaminated aperture_capped usable flags mask_rejected neighbour_core internal_double shared_light close_pair_bridge sky_unreliable label_area_fraction label_light_fraction aperture_snr measured_aperture_flux_adu original_usable original_flags original_aperture_flux_adu recovered newly_excluded magnitude count_sample psf_fwhm fwhm_error fit_snr reduced_chi2 moffat_beta fit_status psf_reference local_psf_fwhm width_tolerance source_class is_star flux_error_adu background_flux_error_adu source_flux_error_adu magnitude_error_random magnitude_error_total photometric_snr magnitude_error_zeropoint remaining_sample
 1 3064 11894 2131.8384667306623 2308.9305642575955 2132 2312 35956.0 9286.5849609375 6142 7876207.0 ellipse 21.658774513543207 12.512234989737086 90.33328852520202 nan 8.663509805417283 5.004893995894834 1.7310076522146836 False False True False False False close_pair_bridge False False False False True False 0.0 0.0 4760.439004957278 7513990.0 False blended 7513990.0 False False nan False nan nan nan nan nan not_fitted False nan nan unknown False nan nan nan nan nan nan 0.02 False

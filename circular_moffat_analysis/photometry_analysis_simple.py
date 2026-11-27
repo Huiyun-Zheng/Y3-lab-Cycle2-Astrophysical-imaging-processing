@@ -2,7 +2,7 @@
 
 Only results/simple_analysis is written. Existing scripts and other results are unchanged.
 Magnitude errors are stored, not plotted. No count covariance matrices or blank apertures.
-Additional plots report the simple np.polyfit slope error and differential counts.
+Additional plots report Monte Carlo slope errors and differential counts.
 """
 
 import sys
@@ -31,7 +31,7 @@ OUTPUT_DIR = CODE_DIR / "results" / "simple_analysis"
 
 MEASUREMENT_MAG_LIMIT = 22.0
 CLASSIFICATION_MAG_LIMIT = 21.0
-MAG_STEP = 0.42
+MAG_STEP = 0.5
 MC_DRAWS = 2000
 RANDOM_SEED = 20261118
 
@@ -194,7 +194,7 @@ def counts_from_magnitudes(magnitudes, limits):
     return np.array(counts)
 
 
-def count_error_model(flux, flux_error, header, limits, draws=MC_DRAWS):
+def count_error_model(flux, flux_error, header, limits, draws=MC_DRAWS, return_samples=False):
     """Estimate count errors with flux perturbations and Poisson count draws."""
     if draws < 2:
         raise ValueError("At least two Monte Carlo draws are required.")
@@ -235,7 +235,8 @@ def count_error_model(flux, flux_error, header, limits, draws=MC_DRAWS):
 
     # Use the spread across trials as the error at each magnitude limit.
     # No extra sqrt(N) term is needed: Poisson fluctuations are already included.
-    return np.std(simulated, axis=0, ddof=1), np.mean(simulated, axis=0)
+    errors, means = np.std(simulated, axis=0, ddof=1), np.mean(simulated, axis=0)
+    return (errors, means, simulated) if return_samples else (errors, means)
 
 
 def descriptive_line_fit(x, y):
@@ -320,7 +321,7 @@ def plot_number_counts(table, area, output, fit_range, header):
     )
     ax.set(
         xlabel="Limiting aperture magnitude, r",
-        ylabel=r"$\log_{10}[(N(<m))/(1\,\mathrm{deg}^{-2})]$",
+        ylabel=r"$\log_{10}[(N(<m)/(1\,\mathrm{deg}^{-2})]$",
         title="Observed cumulative counts",
     )
     ax.grid(alpha=0.25)
@@ -464,25 +465,38 @@ def run_analysis(
     return classified, fit
 
 
-def line_fit_with_error(x, y):
-    """Return the straight-line fit and the formal errors from np.polyfit."""
+def line_fit_with_error(x, y, simulated_counts, normalization):
+    """Fit the observed line; estimate parameter errors from Monte Carlo fits."""
     x, y = np.asarray(x, float), np.asarray(y, float)
     good = np.isfinite(x) & np.isfinite(y)
     if np.count_nonzero(good) < 3 or np.ptp(x[good]) == 0:
         raise ValueError("At least three finite points with different x values are needed.")
 
-    # Keep the original unweighted fit. The covariance describes the scatter
-    # around this straight line; it does not include count correlations.
-    coefficients, covariance = np.polyfit(x[good], y[good], 1, cov=True)
+    coefficients = np.polyfit(x[good], y[good], 1)
+    samples = np.asarray(simulated_counts, float)[:, good]
+    normalization = np.broadcast_to(np.asarray(normalization, float), x.shape)[good]
+    if np.any(~np.isfinite(normalization)) or np.any(normalization <= 0):
+        raise ValueError("Count normalization must be finite and positive.")
+    # Use exactly the same fit points in every trial. A zero count cannot be
+    # logged: omit that trial rather than invent a count or change its fit range.
+    valid = np.all(np.isfinite(samples) & (samples > 0), axis=1)
+    if np.count_nonzero(valid) < 2:
+        raise ValueError("Need at least two Monte Carlo trials with positive counts at all fit points.")
+    trial_fits = np.array([
+        np.polyfit(x[good], np.log10(counts / normalization), 1)
+        for counts in samples[valid]
+    ])
     return {
         "slope": float(coefficients[0]),
         "intercept": float(coefficients[1]),
-        "slope_error": float(np.sqrt(covariance[0, 0])),
-        "intercept_error": float(np.sqrt(covariance[1, 1])),
+        "slope_error": float(np.std(trial_fits[:, 0], ddof=1)),
+        "intercept_error": float(np.std(trial_fits[:, 1], ddof=1)),
+        "slope_mc_valid_draws": int(valid.sum()),
+        "slope_mc_skipped_draws": int((~valid).sum()),
     }
 
 
-def differential_count_errors(flux, flux_error, header, edges, draws=MC_DRAWS):
+def differential_count_errors(flux, flux_error, header, edges, draws=MC_DRAWS, return_samples=False):
     """Simulate counts in separate magnitude bins, without accumulating them."""
     flux, flux_error = np.asarray(flux, float), np.asarray(flux_error, float)
     edges = np.asarray(edges, float)
@@ -515,18 +529,24 @@ def differential_count_errors(flux, flux_error, header, edges, draws=MC_DRAWS):
         simulated[trial] = rng.poisson(bin_counts)
 
     # Poisson fluctuations are already present; do not add sqrt(N) again.
-    return np.std(simulated, axis=0, ddof=1), np.mean(simulated, axis=0)
+    errors, means = np.std(simulated, axis=0, ddof=1), np.mean(simulated, axis=0)
+    return (errors, means, simulated) if return_samples else (errors, means)
 
 
-def save_counts_plot_with_error(x, y, y_error, fit_range, output_path, differential=False):
-    """Draw a counts plot with a simple fitted slope and its polyfit error."""
+def save_counts_plot_with_error(
+    x, y, y_error, fit_range, output_path, simulated_counts, normalization, differential=False,
+):
+    """Draw a counts plot with the standard deviation of Monte Carlo slopes."""
     x, y, y_error = np.asarray(x), np.asarray(y), np.asarray(y_error)
     good = np.isfinite(x) & np.isfinite(y) & np.isfinite(y_error)
     fit_mask = good & (x >= fit_range[0]) & (x <= fit_range[1])
     if fit_range[0] >= fit_range[1]:
         raise ValueError("Fit range must increase.")
     # A sparse differential catalogue may have fewer than three nonempty bins.
-    fit = line_fit_with_error(x[fit_mask], y[fit_mask]) if fit_mask.sum() >= 3 else None
+    fit = line_fit_with_error(
+        x[fit_mask], y[fit_mask], np.asarray(simulated_counts)[:, fit_mask],
+        np.broadcast_to(normalization, x.shape)[fit_mask],
+    ) if fit_mask.sum() >= 3 else None
 
     fig, ax = plt.subplots(figsize=(8, 6), layout="constrained")
     ax.errorbar(
@@ -542,7 +562,7 @@ def save_counts_plot_with_error(x, y, y_error, fit_range, output_path, different
         line = np.poly1d([fit["slope"], fit["intercept"]])
         ax.plot(
             xx, line(xx), color="red", linewidth=3,
-            label=f"Descriptive slope = {fit['slope']:.3f} ± {fit['slope_error']:.3f}",
+            label=f"Descriptive slope = {fit['slope']:.3f} ± {fit['slope_error']:.3f} (MC)",
         )
         anchor = np.mean(xx)
         ax.plot(
@@ -555,13 +575,13 @@ def save_counts_plot_with_error(x, y, y_error, fit_range, output_path, different
     if differential:
         ax.set(
             xlabel="Aperture magnitude, r (bin centre)",
-            ylabel=r"$\log_{10}[(\Delta N/(A\,\Delta m))/(1\,\mathrm{deg}^{-2}\,\mathrm{mag}^{-1})]$",
+            ylabel=r"$\log_{10}[(\Delta N)/(1\,\mathrm{deg}^{-2}\,\mathrm{mag}^{-1})]$",
             title="Observed differential counts",
         )
     else:
         ax.set(
             xlabel="Limiting aperture magnitude, r",
-            ylabel=r"$\log_{10}[(N(<m)/A)/(1\,\mathrm{deg}^{-2})]$",
+            ylabel=r"$\log_{10}[(N(<m))/(1\,\mathrm{deg}^{-2})]$",
             title="Observed cumulative counts",
         )
     ax.grid(alpha=0.25)
@@ -572,7 +592,7 @@ def save_counts_plot_with_error(x, y, y_error, fit_range, output_path, different
 
 
 def add_slope_error_and_differential_counts(table, output, header):
-    """Extend the saved analysis while leaving the original functions intact."""
+    """Add Monte Carlo slope errors and differential counts to the saved analysis."""
     output = Path(output)
     cumulative = Table.read(output / "number_counts.ecsv")
     area = float(cumulative.meta["area_deg2"])
@@ -592,29 +612,44 @@ def add_slope_error_and_differential_counts(table, output, header):
     ):
         raise ValueError("Saved cumulative counts do not match this catalogue.")
 
+    flux = np.asarray(table["aperture_flux_adu"][selected], float)
+    error = np.asarray(table["flux_error_adu"][selected], float)
+    count_error, mean_counts, cumulative_samples = count_error_model(
+        flux, error, header, np.asarray(cumulative["limiting_magnitude"], float),
+        return_samples=True,
+    )
+    cumulative["count_error_mc"] = count_error
+    cumulative["count_mean_mc"] = mean_counts
+    cumulative["log_error_mc"] = count_error / (np.log(10) * cumulative["count"])
     fit = save_counts_plot_with_error(
         cumulative["limiting_magnitude"], cumulative["log10_density"],
         cumulative["log_error_mc"], fit_range, output / "cumulative_number_counts.png",
+        cumulative_samples, area,
     )
     fit_note = (
-        "Unweighted np.polyfit(degree=1, cov=True); errors are square roots of "
-        "its scaled covariance diagonal. Formal line-fit errors only; "
-        "count correlations and systematic uncertainties are not included."
+        "Observed unweighted np.polyfit(degree=1); parameter errors are the sample "
+        "standard deviations (ddof=1) of fits to Monte Carlo log-density curves "
+        "at the same fit points. Includes Poisson, flux and shared zero-point "
+        "perturbations, preserving cumulative-count correlations. Trials with "
+        "nonpositive counts at any fit point are skipped and recorded. "
+        "No completeness, classification or cosmic-variance errors."
     )
     if fit is not None:
         cumulative.meta.update(fit)
     cumulative.meta["fit_error_note"] = fit_note
+    cumulative.meta["mc_draws"] = MC_DRAWS
+    cumulative.meta["random_seed"] = RANDOM_SEED + 1
     cumulative.write(output / "number_counts.ecsv", overwrite=True)
 
-    # Use the same 0.5-mag grid as the cumulative counts, including its first
+    # Use the same magnitude grid as the cumulative counts, including its first
     # zero-count edge. Plot each separate bin at the midpoint of its edges.
     edges, _ = cumulative_counts(magnitudes, step)
     counts = np.diff(counts_from_magnitudes(magnitudes, edges))
     widths = np.diff(edges)
     centres = (edges[:-1] + edges[1:]) / 2
-    flux = np.asarray(table["aperture_flux_adu"][selected], float)
-    error = np.asarray(table["flux_error_adu"][selected], float)
-    count_error, mean_counts = differential_count_errors(flux, error, header, edges)
+    count_error, mean_counts, differential_samples = differential_count_errors(
+        flux, error, header, edges, return_samples=True,
+    )
 
     # Divide by BOTH sky area and bin width to obtain counts per deg^2 per mag.
     density = counts / (area * widths)
@@ -633,7 +668,8 @@ def add_slope_error_and_differential_counts(table, output, header):
     })
     differential_fit = save_counts_plot_with_error(
         centres, log_density, log_error, fit_range,
-        output / "differential_number_counts.png", differential=True,
+        output / "differential_number_counts.png", differential_samples,
+        area * widths, differential=True,
     )
     if differential_fit is not None:
         differential.meta.update(differential_fit)
@@ -650,15 +686,15 @@ def add_slope_error_and_differential_counts(table, output, header):
         table.meta["descriptive_slope_error"] = fit["slope_error"]
         table.meta["slope_error_note"] = fit_note
         table.write(output / "classified_sources.ecsv", overwrite=True)
-        print(f"Cumulative slope: {fit['slope']:.6f} +/- {fit['slope_error']:.6f}")
+        print(f"Cumulative slope: {fit['slope']:.6f} +/- {fit['slope_error']:.7f}")
     if differential_fit is not None:
-        print(f"Differential slope: {differential_fit['slope']:.6f} +/- {differential_fit['slope_error']:.6f}")
+        print(f"Differential slope: {differential_fit['slope']:.6f} +/- {differential_fit['slope_error']:.7f}")
     return fit, differential_fit
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--fit-range", nargs=2, type=float, default=(19.0, 23.0))
+    parser.add_argument("--fit-range", nargs=2, type=float, default=(18.5, 22.0))
     parser.add_argument("--measurement-mag-limit", type=float, default=MEASUREMENT_MAG_LIMIT)
     parser.add_argument("--classification-mag-limit", type=float, default=CLASSIFICATION_MAG_LIMIT)
     parser.add_argument(
